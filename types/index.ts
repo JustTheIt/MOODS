@@ -27,6 +27,25 @@ export interface Post {
     intensity: number; // 0.0 to 1.0
     timestamp: number;
     anonymous?: boolean;
+    likesCount?: number;
+    commentsCount?: number;
+    repostsCount?: number;
+    originalPostId?: string; // For reposts
+
+    // Joined data
+    originalPost?: Post | null;
+    originalAuthor?: User | null;
+}
+
+export interface Comment {
+    id: string;
+    postId: string;
+    userId: string;
+    content: string;
+    timestamp: number;
+
+    // Joined data
+    user?: User | null;
 }
 
 export interface Story {

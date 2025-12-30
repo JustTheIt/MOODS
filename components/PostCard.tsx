@@ -1,13 +1,15 @@
 import { MOOD_COLORS, MoodType, THEME } from '@/constants/theme';
 import { useMood } from '@/context/MoodContext';
+import { auth } from '@/lib/auth';
+import { checkPostLiked, deletePost, repostPost, toggleLikePost } from '@/services/postService';
 import { Post, User } from '@/types';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
 import { useVideoPlayer, VideoView } from 'expo-video';
-import { MoreHorizontal, Share2 } from 'lucide-react-native';
-import { useEffect } from 'react';
-import { Image, StyleSheet, Text, TouchableOpacity, useColorScheme, View } from 'react-native';
-import Animated, { Easing, useAnimatedStyle, useSharedValue, withRepeat, withSequence, withTiming } from 'react-native-reanimated';
+import { Heart, MessageCircle, Repeat, Share2, Trash } from 'lucide-react-native';
+import { useEffect, useState } from 'react';
+import { Alert, Image, Share, StyleSheet, Text, TouchableOpacity, useColorScheme, View } from 'react-native';
+import Animated, { Easing, useAnimatedStyle, useSharedValue, withRepeat, withSequence, withSpring, withTiming } from 'react-native-reanimated';
 
 interface PostCardProps {
     post: Post;
@@ -17,7 +19,7 @@ interface PostCardProps {
 function VideoPlayer({ uri }: { uri: string }) {
     const player = useVideoPlayer(uri, (player) => {
         player.loop = true;
-        player.muted = true; // Suggest muting feed videos by default
+        player.muted = true;
         player.play();
     });
 
@@ -37,18 +39,30 @@ export default function PostCard({ post, user }: PostCardProps) {
     const router = useRouter();
     const moodColors = MOOD_COLORS[post.mood as MoodType] || MOOD_COLORS.happy;
     const { settings } = useMood();
+    const currentUser = auth.currentUser;
+
+    // State for interactions
+    const [liked, setLiked] = useState(false);
+    const [likesCount, setLikesCount] = useState(post.likesCount || 0);
+    const [repostsCount, setRepostsCount] = useState(post.repostsCount || 0);
+    const scale = useSharedValue(1);
 
     // Animation for intensity glow
     const glowOpacity = useSharedValue(0.3);
 
     useEffect(() => {
+        if (currentUser) {
+            checkPostLiked(post.id, currentUser.uid).then(setLiked);
+        }
+    }, [post.id, currentUser]);
+
+    useEffect(() => {
         if (settings.reduceMotion) {
-            glowOpacity.value = 0.3; // Static if reduced motion
+            glowOpacity.value = 0.3;
             return;
         }
 
         if (post.intensity && post.intensity > 0.6) {
-            // Pulse animation for high intensity
             glowOpacity.value = withRepeat(
                 withSequence(
                     withTiming(0.6, { duration: 1500, easing: Easing.inOut(Easing.ease) }),
@@ -63,6 +77,89 @@ export default function PostCard({ post, user }: PostCardProps) {
     const animatedGlowStyle = useAnimatedStyle(() => ({
         opacity: glowOpacity.value
     }));
+
+    const animatedHeartStyle = useAnimatedStyle(() => ({
+        transform: [{ scale: scale.value }]
+    }));
+
+    const handleLike = async () => {
+        if (!currentUser) {
+            Alert.alert("Sign in required", "Please sign in to like posts.");
+            return;
+        }
+
+        // Optimistic update
+        const newLiked = !liked;
+        const newCount = newLiked ? likesCount + 1 : likesCount - 1;
+
+        setLiked(newLiked);
+        setLikesCount(newCount);
+
+        // Animation
+        if (newLiked) {
+            scale.value = withSequence(
+                withSpring(1.2),
+                withSpring(1)
+            );
+        }
+
+        try {
+            await toggleLikePost(post.id, currentUser.uid);
+        } catch (error) {
+            // Revert on error
+            setLiked(!newLiked);
+            setLikesCount(likesCount);
+            console.error(error);
+        }
+    };
+
+    const handleShare = async () => {
+        try {
+            await Share.share({
+                message: `Check out this mood: ${post.content}`,
+            });
+        } catch (error) {
+            console.error(error);
+        }
+    };
+
+    const handleRepost = async () => {
+        if (!currentUser) return;
+        Alert.alert("Repost this mood?", "It will appear on your profile.", [
+            { text: "Cancel", style: "cancel" },
+            {
+                text: "Repost",
+                onPress: async () => {
+                    try {
+                        await repostPost(post.id, currentUser.uid, post.mood);
+                        setRepostsCount(c => c + 1);
+                        Alert.alert("Success", "Mood reposted!");
+                    } catch (error) {
+                        Alert.alert("Error", "Could not repost.");
+                    }
+                }
+            }
+        ]);
+    };
+
+    const handleDelete = () => {
+        Alert.alert("Delete Post", "Are you sure? This cannot be undone.", [
+            { text: "Cancel", style: "cancel" },
+            {
+                text: "Delete",
+                style: "destructive",
+                onPress: async () => {
+                    try {
+                        await deletePost(post.id);
+                    } catch (error) {
+                        Alert.alert("Error", "Could not delete post.");
+                    }
+                }
+            }
+        ]);
+    };
+
+    const isOwner = currentUser?.uid === post.userId;
 
     return (
         <View style={[styles.card, { backgroundColor: theme.card }]}>
@@ -97,11 +194,14 @@ export default function PostCard({ post, user }: PostCardProps) {
                     </TouchableOpacity>
                     <Text style={[styles.handle, { color: theme.textSecondary }]}>
                         {post.anonymous ? 'vibrating...' : (user.handle || ('@' + user.username))} • {new Date(post.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                        {post.originalPostId && ' • Reposted'}
                     </Text>
                 </View>
-                <TouchableOpacity>
-                    <MoreHorizontal size={20} color={theme.textSecondary} />
-                </TouchableOpacity>
+                {isOwner && (
+                    <TouchableOpacity onPress={handleDelete}>
+                        <Trash size={18} color={theme.textSecondary} />
+                    </TouchableOpacity>
+                )}
             </View>
 
             {/* Content */}
@@ -118,27 +218,74 @@ export default function PostCard({ post, user }: PostCardProps) {
                         {post.mood.charAt(0).toUpperCase() + post.mood.slice(1)}
                     </Text>
                 </View>
-                <Text style={[styles.postText, { color: theme.text }]}>{post.content}</Text>
-                {post.image && (() => {
-                    const isVideo = post.image.match(/\.(mp4|mov|avi|wmv|webm|flv|mkv)$|(\/video\/upload\/)/i);
-                    // We need a local player for each video in the list
-                    // However, useVideoPlayer is a hook, so we need to be careful inside a FlatList
-                    // For a feed, it's better to have a dedicated VideoPlayer component or manage state
-                    // For now, I'll create a small sub-component for the video to handle the hook
-                    return isVideo ? (
-                        <VideoPlayer uri={post.image} />
-                    ) : (
-                        <Image source={{ uri: post.image }} style={styles.postImage} />
-                    );
-                })()}
+
+                {post.content ? (
+                    <Text style={[styles.postText, { color: theme.text }]}>{post.content}</Text>
+                ) : null}
+
+                {/* Repost Content */}
+                {post.originalPost ? (
+                    <View style={[styles.repostContainer, { borderColor: theme.border, backgroundColor: theme.background }]}>
+                        <View style={styles.repostHeader}>
+                            <Image
+                                source={{ uri: post.originalAuthor?.avatarUrl || 'https://i.pravatar.cc/150' }}
+                                style={styles.repostAvatar}
+                            />
+                            <Text style={[styles.repostAuthor, { color: theme.text }]}>
+                                {post.originalAuthor?.username || 'Unknown User'}
+                            </Text>
+                        </View>
+                        <Text style={[styles.postText, { color: theme.text }]}>{post.originalPost.content}</Text>
+                        {post.originalPost.image && (() => {
+                            const isVideo = post.originalPost.image.match(/\.(mp4|mov|avi|wmv|webm|flv|mkv)$|(\/video\/upload\/)/i);
+                            return isVideo ? (
+                                <VideoPlayer uri={post.originalPost.image} />
+                            ) : (
+                                <Image source={{ uri: post.originalPost.image }} style={styles.postImage} />
+                            );
+                        })()}
+                    </View>
+                ) : (
+                    /* Regular Post Image */
+                    post.image && (() => {
+                        const isVideo = post.image.match(/\.(mp4|mov|avi|wmv|webm|flv|mkv)$|(\/video\/upload\/)/i);
+                        return isVideo ? (
+                            <VideoPlayer uri={post.image} />
+                        ) : (
+                            <Image source={{ uri: post.image }} style={styles.postImage} />
+                        );
+                    })()
+                )}
             </View>
 
             {/* Footer */}
             <View style={[styles.footer, { borderTopColor: theme.border }]}>
-                {/* No metrics - only interactions */}
-                <TouchableOpacity style={styles.actionButton}>
+
+                <TouchableOpacity style={styles.actionButton} onPress={handleLike}>
+                    <Animated.View style={animatedHeartStyle}>
+                        <Heart size={20} color={liked ? "#ff4040" : theme.textSecondary} fill={liked ? "#ff4040" : "transparent"} />
+                    </Animated.View>
+                    <Text style={[styles.actionText, { color: liked ? "#ff4040" : theme.textSecondary }]}>
+                        {likesCount > 0 ? likesCount : 'Like'}
+                    </Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity style={styles.actionButton} onPress={() => router.push(`/post/${post.id}` as any)}>
+                    <MessageCircle size={20} color={theme.textSecondary} />
+                    <Text style={[styles.actionText, { color: theme.textSecondary }]}>
+                        {post.commentsCount && post.commentsCount > 0 ? post.commentsCount : 'Comment'}
+                    </Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity style={styles.actionButton} onPress={handleRepost}>
+                    <Repeat size={20} color={theme.textSecondary} />
+                    <Text style={[styles.actionText, { color: theme.textSecondary }]}>
+                        {repostsCount > 0 ? repostsCount : 'Repost'}
+                    </Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity style={styles.actionButton} onPress={handleShare}>
                     <Share2 size={20} color={theme.textSecondary} />
-                    <Text style={[styles.actionText, { color: theme.textSecondary }]}>Share</Text>
                 </TouchableOpacity>
             </View>
         </View>
@@ -220,6 +367,27 @@ const styles = StyleSheet.create({
         gap: 6,
     },
     actionText: {
+        fontSize: 14,
+    },
+    repostContainer: {
+        marginTop: 8,
+        padding: 12,
+        borderRadius: 12,
+        borderWidth: 1,
+    },
+    repostHeader: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        marginBottom: 8,
+    },
+    repostAvatar: {
+        width: 24,
+        height: 24,
+        borderRadius: 12,
+        marginRight: 8,
+    },
+    repostAuthor: {
+        fontWeight: '600',
         fontSize: 14,
     }
 });

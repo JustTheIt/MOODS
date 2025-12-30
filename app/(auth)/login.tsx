@@ -109,6 +109,8 @@ export default function LoginScreen() {
                             )}
                         </TouchableOpacity>
 
+
+
                         <View style={styles.footer}>
                             <Text style={[styles.footerText, { color: theme.textSecondary }]}>
                                 Don't have an account?{' '}
