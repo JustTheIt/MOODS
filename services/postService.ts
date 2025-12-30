@@ -173,7 +173,6 @@ export const getPosts = async (lastVisible: any = null, moodFilter?: string) => 
         }
 
         const snapshot = await getDocs(q);
-        const snapshot = await getDocs(q);
         const posts = snapshot.docs.map(mapDocToPost);
 
         // Enrich posts with repost data
@@ -254,7 +253,6 @@ export const getComments = async (postId: string) => {
             collection(db, "posts", postId, "comments"),
             orderBy("createdAt", "asc")
         );
-        const snapshot = await getDocs(q);
         const snapshot = await getDocs(q);
 
         const comments = await Promise.all(snapshot.docs.map(async (doc) => {
