@@ -1,76 +1,75 @@
-# MOODS - Mood Tracking & Social Application
+# 🌟 MOODS: Modern Mood Tracking & Social Ecosystem
 
-MOODS is a modern mobile application built with React Native and Expo, designed to help users track their daily moods, share reflections, and interact with a community.
-
-## 🚀 Technologies
-
-### Languages
-- **TypeScript**: The primary language for logic and UI components, ensuring type safety and code quality.
-- **JavaScript**: Used for configuration and build scripts.
-
-### Frontend
-- **Framework**: [React Native](https://reactnative.dev/) with [Expo](https://expo.dev/) (Managed Workflow).
-- **Navigation**: [Expo Router](https://docs.expo.dev/router/introduction/) (Next.js-style file-based routing).
-- **Animations**: `react-native-reanimated` for smooth UI transitions and gesture-based interactions.
-- **Icons**: `lucide-react-native` and `@expo/vector-icons`.
-
-### Backend & Database
-- **Firebase Platform**:
-    - **Cloud Firestore**: NoSQL real-time database used to store user profiles, mood logs, circles, and posts.
-    - **Firebase Authentication**: Secure user identity management and role-based access control.
-- **Media Hosting**:
-    - **Cloudinary**: Cloud-based image and video management for high-performance media delivery.
+MOODS is a cutting-edge, cross-platform mobile application built on the **React Native** and **Expo** ecosystem. This repository follows a professional monorepo structure, separating the frontend mobile app from its dedicated Node.js backend.
 
 ---
 
-## 🏗️ Core Algorithms & Logic
+## 🏗️ Project Architecture
 
-### 1. Authentication Flow
-The application implements a secure authentication flow using Firebase Auth.
-- **Logic**: Persistent login state is managed via a React Context (`AuthContext.tsx`). Upon app launch, the authentication state is verified, and the user is routed to either the Auth (Login/Register) or App (Home/Dashboard) flow accordingly.
+### 📂 Repository Structure
+```bash
+MOODS/
+├── 📁 frontend/               # Expo React Native App
+│   ├── (app, components, context, etc.)
+│   └── package.json
+├── 📁 backend/                # Node.js + Express API
+│   ├── src/
+│   └── package.json
+├── 📄 package.json            # Root monorepo scripts
+└── 📄 README.md
+```
 
-### 2. Mood Capture & History Algorithm
-- **Logic**: Users can capture their mood daily. The data is stored with a timestamp and associated metadata (e.g., mood level, note).
-- **Analysis**: The application uses a "Balance Meter" logic to aggregate mood data over time, providing users with insights into their emotional trends.
+### 🎨 Frontend (Mobile)
+*   **Framework**: **React Native (Expo SDK 54)**
+*   **Routing**: **Expo Router (File-based)**
+*   **API Interceptor**: Axios-based communication with the backend.
+*   **Media**: `expo-image-picker` and `expo-video`.
 
-### 3. Media Upload Strategy
-Optimized media handling to ensure a smooth user experience.
-- **Algorithm**: Instead of sending large binary files directly to the primary database, the application utilizes a dedicated `cloudinaryService.ts`.
-- **Workflow**:
-    1. Select media via `expo-image-picker`.
-    2. Upload to Cloudinary using an unsigned upload preset.
-    3. Save the returned secure URL and metadata to Firestore.
-
-### 4. File-Based Routing
-- **Mechanism**: Leveraging `expo-router`'s algorithm to automatically generate navigation paths based on the directory structure within the `app/` folder. This simplifies deep linking and nested navigation management.
-
----
-
-## 📁 Project Structure
-
-- `app/`: Route-based screens and layouts.
-- `components/`: Reusable UI components (buttons, cards, charts).
-- `services/`: API and third-party service integrations (Firebase, Cloudinary).
-- `context/`: Application-wide state management (Auth, Mood).
-- `assets/`: Static image and font resources.
+### ⚙️ Backend (API)
+*   **Runtime**: **Node.js + TypeScript**
+*   **Framework**: **Express.js**
+*   **Auth**: **Firebase Admin SDK** for secure token verification.
+*   **Storage**: **Cloudinary** for signed, secure media management.
 
 ---
 
-## 🛠️ Setup & Development
+## 🚀 Getting Started
 
-1. **Install Dependencies**:
-   ```bash
-   npm install
-   ```
+### 1. Root Installation
+From the project root:
+```bash
+npm install
+npm install -g concurrently  # Optional, for the dev script
+```
 
-2. **Run the Project**:
-   ```bash
-   npx expo start
-   ```
+### 2. Backend Setup
+```bash
+cd backend
+npm install
+# Create .env based on requirements (Firebase Admin & Cloudinary)
+npm run dev
+```
 
-3. **Deploying**:
-   The project is configured for deployment via Expo EAS or as a web application via `react-native-web`.
+### 3. Frontend Setup
+```bash
+cd frontend
+npm install
+# Ensure .env has EXPO_PUBLIC_API_URL=http://localhost:5000/api
+npx expo start
+```
+
+### 🏎️ One-Command Development
+If you have `concurrently` installed:
+```bash
+npm run dev
+```
 
 ---
 
-Generated on: 2025-12-28
+## 🛡️ Security
+- **Hybrid Architecture**: Business logic is offloaded to the backend.
+- **Token Verification**: Every API call is verified using Firebase ID tokens.
+- **Signed Uploads**: Cloudinary uploads are signed on the backend to prevent unauthorized storage access.
+
+---
+*Updated to Monorepo Structure by Antigravity on 2025-12-30*
