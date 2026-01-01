@@ -2,13 +2,14 @@ import MoodFilterBar from '@/components/MoodFilterBar';
 import PostCard from '@/components/PostCard';
 import { useColorScheme } from '@/components/useColorScheme';
 import { MoodType, THEME } from '@/constants/theme';
+import { useAuth } from '@/context/AuthContext';
 import { useNotifications } from '@/context/NotificationContext';
 import { getPosts } from '@/services/postService';
 import { getUserProfile, UserProfile } from '@/services/userService';
 import { Post as PostType } from '@/types';
 import { router } from 'expo-router';
 import { Bell, Plus } from 'lucide-react-native';
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { FlatList, RefreshControl, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -19,12 +20,15 @@ export default function HomeScreen() {
   const [users, setUsers] = useState<Record<string, UserProfile>>({});
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const { user: authUser, authLoading } = useAuth();
   const { unreadCount } = useNotifications();
 
   // Filtering Logic
   const [selectedMoods, setSelectedMoods] = useState<MoodType[]>([]);
 
-  const fetchPosts = async () => {
+  const fetchPosts = useCallback(async () => {
+    if (authLoading) return;
+
     try {
       setLoading(true);
       const { posts: fetchedPosts } = await getPosts(null, selectedMoods.length > 0 ? selectedMoods[0] : undefined);
@@ -49,7 +53,7 @@ export default function HomeScreen() {
       setLoading(false);
       setRefreshing(false);
     }
-  };
+  }, [authLoading, selectedMoods, users]);
 
   useEffect(() => {
     fetchPosts();
@@ -139,7 +143,7 @@ export default function HomeScreen() {
         ListEmptyComponent={
           <View style={{ alignItems: 'center', marginTop: 50 }}>
             <Text style={{ color: theme.textSecondary }}>
-              {loading ? 'Fetching moods...' : 'No moods found matching this filter.'}
+              {authLoading || loading ? 'Fetching moods...' : 'No moods found matching this filter.'}
             </Text>
           </View>
         }

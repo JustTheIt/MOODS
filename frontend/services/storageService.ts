@@ -16,7 +16,7 @@ export const uploadMedia = async (uri: string, type: 'image' | 'video' = 'image'
   try {
     // 1. Get signature from backend
     const signResponse = await api.get('/media/sign');
-    const { signature, timestamp, apiKey, cloudName } = signResponse.data;
+    const { signature, timestamp, apiKey, cloudName, uploadPreset } = signResponse.data;
 
     const formData = new FormData();
     // @ts-ignore
@@ -29,7 +29,7 @@ export const uploadMedia = async (uri: string, type: 'image' | 'video' = 'image'
     formData.append("api_key", apiKey);
     formData.append("timestamp", timestamp.toString());
     formData.append("signature", signature);
-    formData.append("upload_preset", "moods_preset");
+    formData.append("upload_preset", uploadPreset || "MoodsApp");
     formData.append("resource_type", type === 'video' ? "video" : "image");
 
     const response = await fetch(

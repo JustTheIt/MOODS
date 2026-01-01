@@ -1,12 +1,11 @@
 import EmotionStories from '@/components/EmotionStories';
-import MoodFilterBar from '@/components/MoodFilterBar';
-import PostCard from '@/components/PostCard';
+import SuggestedUsersRow from '@/components/SuggestedUsersRow';
 import TrendingAura from '@/components/TrendingAura';
+import TrendingSection from '@/components/TrendingSection';
 import { useColorScheme } from '@/components/useColorScheme';
 import { MoodType, THEME } from '@/constants/theme';
-import { getPosts } from '@/services/postService';
-import { getUserProfile, UserProfile } from '@/services/userService';
-import { Post as PostType } from '@/types';
+import { clearSuggestedUsersCache, getSuggestedUsers, SuggestedUser } from '@/services/suggestedUsersService';
+import { clearTrendingCache, getTrendingPosts, TrendingPost } from '@/services/trendingService';
 import { useEffect, useState } from 'react';
 import { FlatList, RefreshControl, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -14,96 +13,102 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 export default function ExploreScreen() {
     const colorScheme = useColorScheme();
     const theme = colorScheme === 'dark' ? THEME.dark : THEME.light;
-    const [posts, setPosts] = useState<PostType[]>([]);
-    const [users, setUsers] = useState<Record<string, UserProfile>>({});
-    const [loading, setLoading] = useState(true);
+
+    // States for sections
+    const [suggestedUsers, setSuggestedUsers] = useState<SuggestedUser[]>([]);
+    const [loadingSuggestions, setLoadingSuggestions] = useState(true);
+    const [trendingPosts, setTrendingPosts] = useState<TrendingPost[]>([]);
+    const [loadingTrending, setLoadingTrending] = useState(true);
     const [refreshing, setRefreshing] = useState(false);
-    const [selectedMoods, setSelectedMoods] = useState<MoodType[]>([]);
 
-    const fetchPosts = async () => {
+    // Filter state
+    const [activeFilterMood, setActiveFilterMood] = useState<MoodType | null>(null);
+
+    const fetchSuggestedUsers = async () => {
         try {
-            setLoading(true);
-            const { posts: fetchedPosts } = await getPosts(null, selectedMoods.length > 0 ? selectedMoods[0] : undefined);
-            setPosts(fetchedPosts);
-
-            // Fetch users
-            const userIds = [...new Set(fetchedPosts.map((p: PostType) => p.userId))];
-            const newUsers: Record<string, UserProfile> = { ...users };
-
-            for (const uid of userIds) {
-                if (!newUsers[uid as string]) {
-                    const u = await getUserProfile(uid as string);
-                    if (u) {
-                        newUsers[uid as string] = u;
-                    }
-                }
-            }
-            setUsers(newUsers);
+            setLoadingSuggestions(true);
+            const suggestions = await getSuggestedUsers(10); // Limited to 10
+            setSuggestedUsers(suggestions);
         } catch (error) {
-            console.error("Error fetching explore posts:", error);
+            console.error("Error fetching suggested users:", error);
         } finally {
-            setLoading(false);
-            setRefreshing(false);
+            setLoadingSuggestions(false);
+        }
+    };
+
+    const fetchTrendingPosts = async () => {
+        try {
+            setLoadingTrending(true);
+            const trending = await getTrendingPosts(15, activeFilterMood || undefined);
+            setTrendingPosts(trending);
+        } catch (error) {
+            console.error("Error fetching trending posts:", error);
+        } finally {
+            setLoadingTrending(false);
         }
     };
 
     useEffect(() => {
-        fetchPosts();
-    }, [selectedMoods]);
+        fetchTrendingPosts();
+    }, [activeFilterMood]);
+
+    useEffect(() => {
+        fetchSuggestedUsers();
+        fetchTrendingPosts();
+    }, []);
 
     const onRefresh = () => {
         setRefreshing(true);
-        fetchPosts();
+        clearSuggestedUsersCache();
+        clearTrendingCache();
+
+        Promise.all([
+            fetchSuggestedUsers(),
+            fetchTrendingPosts()
+        ]).finally(() => setRefreshing(false));
     };
 
-    const toggleMood = (mood: MoodType) => {
-        setSelectedMoods(prev => {
-            if (prev.includes(mood)) return prev.filter(m => m !== mood);
-            return [...prev, mood];
-        });
+    const toggleAuraFilter = (mood: MoodType) => {
+        setActiveFilterMood(prev => prev === mood ? null : mood);
     };
 
     return (
         <SafeAreaView style={[styles.container, { backgroundColor: theme.background }]}>
             <FlatList
-                data={posts}
-                keyExtractor={(item) => 'explore_' + item.id}
-                renderItem={({ item }) => {
-                    const postUser = users[item.userId];
-                    const displayUser = postUser ? {
-                        id: item.userId,
-                        username: postUser.username,
-                        name: postUser.username,
-                        handle: postUser.isAnonymous ? 'Anonymous' : '@' + postUser.username,
-                        avatar: postUser.avatarUrl || null,
-                        avatarUrl: postUser.avatarUrl || null,
-                        moodAura: postUser.themeColor
-                    } : {
-                        id: item.userId,
-                        username: 'Loading...',
-                        name: 'Loading...',
-                        handle: '',
-                        avatar: null,
-                        avatarUrl: null,
-                        moodAura: '#ccc'
-                    };
-                    return (
-                        <View style={{ marginBottom: 10 }}>
-                            <PostCard post={item} user={displayUser as any} />
-                        </View>
-                    );
-                }}
+                data={[]} // Primary sections are in Header
+                renderItem={null}
                 ListHeaderComponent={
                     <View style={{ paddingTop: 10 }}>
+                        {/* 1) Emotion Stories - Horizontal */}
                         <EmotionStories />
-                        <View style={{ paddingVertical: 10 }}>
-                            <MoodFilterBar
-                                selectedMoods={selectedMoods}
-                                onToggleMood={toggleMood}
-                                onClear={() => setSelectedMoods([])}
+
+                        <View style={styles.divider} />
+
+                        {/* 2) Community Aura - Interactive Activity */}
+                        <TrendingAura
+                            onMoodPress={toggleAuraFilter}
+                            activeMood={activeFilterMood}
+                        />
+
+                        <View style={styles.divider} />
+
+                        {/* 3) Trending Now - Vertical */}
+                        <TrendingSection
+                            posts={trendingPosts}
+                            loading={loadingTrending}
+                            selectedMood={activeFilterMood || undefined}
+                        />
+
+                        <View style={styles.divider} />
+
+                        {/* 4) Suggested Users - Horizontal (Bottom) */}
+                        <View style={{ marginBottom: 40 }}>
+                            <SuggestedUsersRow
+                                users={suggestedUsers}
+                                loading={loadingSuggestions}
+                                onRefresh={fetchSuggestedUsers}
                             />
                         </View>
-                        <TrendingAura />
                     </View>
                 }
                 contentContainerStyle={styles.listContent}
@@ -120,6 +125,9 @@ const styles = StyleSheet.create({
         flex: 1,
     },
     listContent: {
-        paddingBottom: 100,
+        paddingBottom: 40,
     },
+    divider: {
+        height: 10,
+    }
 });

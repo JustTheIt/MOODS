@@ -1,5 +1,6 @@
 import { MOOD_COLORS, MoodType, THEME } from '@/constants/theme';
 import { useAuth } from '@/context/AuthContext';
+import { useRequireVerification } from '@/hooks/useRequireVerification';
 import { createPost } from '@/services/postService';
 import * as Haptics from 'expo-haptics';
 import { Image } from 'expo-image';
@@ -29,6 +30,7 @@ export default function NewPostScreen() {
     const theme = colorScheme === 'dark' ? THEME.dark : THEME.light;
     const router = useRouter();
     const { user } = useAuth();
+    const { requireVerification } = useRequireVerification();
 
     const [selectedMood, setSelectedMood] = useState<MoodType>('happy');
     const [content, setContent] = useState('');
@@ -58,27 +60,29 @@ export default function NewPostScreen() {
         }
     };
 
-    const handlePost = async () => {
+    const handlePost = () => {
         if (!content.trim() || !user) return;
 
-        setLoading(true);
-        try {
-            await createPost({
-                userId: user.uid,
-                content: content,
-                mood: selectedMood,
-                intensity: intensity,
-                anonymous: user.isAnonymous ?? false,
-            }, media || undefined);
+        requireVerification(async () => {
+            setLoading(true);
+            try {
+                await createPost({
+                    userId: user.uid,
+                    content: content,
+                    mood: selectedMood,
+                    intensity: intensity,
+                    anonymous: user.isAnonymous ?? false,
+                }, media || undefined);
 
-            Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-            router.back();
-        } catch (error: any) {
-            console.error("Failed to post:", error);
-            Alert.alert("Post Failed", error.message || "Failed to create post. Please try again.");
-        } finally {
-            setLoading(false);
-        }
+                Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+                router.back();
+            } catch (error: any) {
+                console.error("Failed to post:", error);
+                Alert.alert("Post Failed", error.message || "Failed to create post. Please try again.");
+            } finally {
+                setLoading(false);
+            }
+        });
     };
 
     const handleIntensitySelect = (val: number) => {

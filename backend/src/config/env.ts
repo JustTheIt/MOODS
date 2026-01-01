@@ -4,7 +4,7 @@ import { z } from 'zod';
 dotenv.config();
 
 const envSchema = z.object({
-    PORT: z.string().default('5000'),
+    PORT: z.string().default('5001'),
     NODE_ENV: z.enum(['development', 'production', 'test']).default('development'),
 
     // Firebase
@@ -16,9 +16,17 @@ const envSchema = z.object({
     CLOUDINARY_CLOUD_NAME: z.string(),
     CLOUDINARY_API_KEY: z.string(),
     CLOUDINARY_API_SECRET: z.string(),
+    CLOUDINARY_UPLOAD_PRESET: z.string().default('MoodsApp'),
 
     // Frontend
     CORS_ORIGIN: z.string().default('*'),
+
+    // Email
+    RESEND_API_KEY: z.string().optional(),
+
+    // Gmail
+    GMAIL_USER: z.string().trim().optional(),
+    GMAIL_APP_PASSWORD: z.string().trim().optional(),
 });
 
 // Map EXPO_PUBLIC_ prefixes if standard keys are missing
@@ -30,6 +38,7 @@ const mappedEnv = {
     CLOUDINARY_CLOUD_NAME: process.env.CLOUDINARY_CLOUD_NAME || process.env.EXPO_PUBLIC_CLOUDINARY_CLOUD_NAME,
     CLOUDINARY_API_KEY: process.env.CLOUDINARY_API_KEY || process.env.EXPO_PUBLIC_CLOUDINARY_API_KEY,
     CLOUDINARY_API_SECRET: process.env.CLOUDINARY_API_SECRET || process.env.EXPO_PUBLIC_CLOUDINARY_API_SECRET,
+    CLOUDINARY_UPLOAD_PRESET: process.env.CLOUDINARY_UPLOAD_PRESET || process.env.EXPO_PUBLIC_CLOUDINARY_UPLOAD_PRESET,
 };
 
 const envVars = envSchema.safeParse(mappedEnv);
@@ -39,4 +48,5 @@ if (!envVars.success) {
     process.exit(1);
 }
 
+console.log(`[Config] 🌍 Environment: ${envVars.data.NODE_ENV}`);
 export const env = envVars.data;

@@ -14,20 +14,22 @@
       "backgroundColor": "#ffffff"
     },
     "ios": {
+      "bundleIdentifier": "com.justtheit.moods",
       "supportsTablet": true
     },
     "android": {
+      "package": "com.justtheit.moods",
       "adaptiveIcon": {
         "foregroundImage": "./assets/images/adaptive-icon.png",
         "backgroundColor": "#ffffff"
       },
-      "edgeToEdgeEnabled": true,
-      "predictiveBackGestureEnabled": false
+      "usesCleartextTraffic": true
     },
-    "web": {
-      "bundler": "metro",
-      "output": "static",
-      "favicon": "./assets/images/favicon.png"
+    "extra": {
+      "eas": {
+        "projectId": "c9257615-3031-4350-8613-12541c6858db"
+      },
+      "router": {}
     },
     "plugins": [
       "expo-router",
@@ -35,6 +37,12 @@
     ],
     "experiments": {
       "typedRoutes": true
-    }
+    },
+    "web": {
+      "bundler": "metro",
+      "output": "static",
+      "favicon": "./assets/images/favicon.png"
+    },
+    "owner": "bishwa"
   }
 }

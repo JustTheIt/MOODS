@@ -23,6 +23,7 @@ export const authenticate = async (req: AuthRequest, res: Response, next: NextFu
         req.user = {
             uid: decodedToken.uid,
             email: decodedToken.email,
+            emailVerified: decodedToken.email_verified,
         };
         next();
     } catch (error) {

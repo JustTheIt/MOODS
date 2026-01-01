@@ -1,4 +1,3 @@
-import { env } from '@/config/env';
 import { errorHandler } from '@/middleware/error.middleware';
 import cors from 'cors';
 import express from 'express';
@@ -17,8 +16,22 @@ import userRoutes from '@/routes/users.routes';
 const app = express();
 
 // Middleware
-app.use(helmet());
-app.use(cors({ origin: env.CORS_ORIGIN }));
+app.use((req, res, next) => {
+    console.log(`[${new Date().toISOString()}] ${req.method} ${req.path}`);
+    next();
+});
+
+app.use(helmet({
+    crossOriginResourcePolicy: false,
+    contentSecurityPolicy: false,
+}));
+
+app.use(cors({
+    origin: true,
+    credentials: true,
+    methods: ['GET', 'POST', 'PATCH', 'DELETE', 'PUT', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization']
+}));
 app.use(express.json());
 
 // Routes

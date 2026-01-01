@@ -34,9 +34,8 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
     const fetchNotifications = async () => {
         if (!user) return;
         try {
-            // Mock data for now until backend connection is live in service
-            // const data = await notificationService.getNotifications();
-            // setNotifications(data);
+            const data = await notificationService.getNotifications();
+            setNotifications(data);
         } catch (error) {
             console.error(error);
         }
@@ -44,51 +43,49 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
 
     useEffect(() => {
         if (user) {
-            // Push notification setup
-            notificationService.registerForPushNotificationsAsync().then(token => {
-                if (token) {
-                    console.log('Push token generated successfully');
-                    // Here you would save the token to your backend for this user
-                    // userService.savePushToken(user.uid, token);
-                }
-            }).catch(err => {
-                console.warn('Push registration failed:', err);
-            });
+            // Push notification setup (runs only on real device)
+            notificationService.registerForPushNotificationsAsync()
+                .then(token => {
+                    if (token) {
+                        console.log('Push token successfully registered and saved');
+                    }
+                })
+                .catch(err => {
+                    console.warn('Push registration flow failed:', err);
+                });
 
             fetchNotifications();
 
-            // Only setup listeners if push notifications are likely to work or if we want local notifications
-            // On SDK 53 Expo Go, even adding listeners might trigger warnings or issues
+            // Setup listeners with safety guards for Expo Go SDK 53+
             try {
                 // 1. Listen for notifications received while app is foreground
                 notificationListener.current = Notifications.addNotificationReceivedListener(notification => {
-                    // Refresh list to show new notification
                     fetchNotifications();
                 });
 
                 // 2. Listen for user tapping a notification
                 responseListener.current = Notifications.addNotificationResponseReceivedListener(response => {
                     const data = response.notification.request.content.data;
-                    // Handle deep linking based on data
+                    console.log('Notification Tapped:', data);
+
+                    // Handle deep linking based on data structure
                     if (data?.postId) {
-                        router.push(`/post/${data.postId}`);
+                        router.push(`/post/${data.postId}` as any);
+                    } else if (data?.userId) {
+                        router.push(`/profile/${data.userId}` as any);
                     } else if (typeof data?.url === 'string') {
                         router.push(data.url as any);
                     } else {
-                        router.push('/notifications');
+                        router.push('/notifications' as any);
                     }
                 });
             } catch (error) {
-                console.warn('Failed to set up notification listeners:', error);
+                console.warn('Error setting up notification listeners:', error);
             }
 
             return () => {
-                try {
-                    notificationListener.current?.remove();
-                    responseListener.current?.remove();
-                } catch (e) {
-                    console.warn('Error cleanup notification subscriptions:', e);
-                }
+                notificationListener.current?.remove();
+                responseListener.current?.remove();
             };
         }
     }, [user]);

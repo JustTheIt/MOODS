@@ -8,6 +8,7 @@ import { useEffect } from 'react';
 import 'react-native-reanimated';
 
 import { useColorScheme } from '@/components/useColorScheme';
+import { VerificationBanner } from '@/components/VerificationBanner';
 import { AuthProvider, useAuth } from '@/context/AuthContext';
 import { MoodProvider, useMood } from '@/context/MoodContext';
 import { NotificationProvider } from '@/context/NotificationContext';
@@ -66,7 +67,7 @@ function RootLayoutNav() {
 
 function RootLayoutContent() {
   const systemScheme = useColorScheme();
-  const { user: authUser, loading: authLoading } = useAuth();
+  const { user: authUser, authLoading } = useAuth();
   const { user: profileUser, settings } = useMood(); // Custom User type with onboardingCompleted
   const segments = useSegments();
   const router = useRouter();
@@ -91,10 +92,12 @@ function RootLayoutContent() {
       const isProfileLoaded = profileUser.id === authUser.uid;
 
       if (isProfileLoaded) {
-        if (!profileUser.onboardingCompleted && !inOnboardingGroup) {
+        const isVerifyScreen = segments.includes('verify-email');
+
+        if (!profileUser.onboardingCompleted && !inOnboardingGroup && !isVerifyScreen) {
           // 3. Profile loaded, but onboarding incomplete -> Go to Onboarding
           router.replace('/(onboarding)/welcome');
-        } else if (profileUser.onboardingCompleted && (inAuthGroup || inOnboardingGroup)) {
+        } else if (profileUser.onboardingCompleted && (inAuthGroup || inOnboardingGroup) && !isVerifyScreen) {
           // 4. Onboarding complete, but on auth/onboarding pages -> Go Home
           router.replace('/home');
         }
@@ -114,6 +117,7 @@ function RootLayoutContent() {
   return (
     <ThemeProvider value={effectiveTheme === 'dark' ? DarkTheme : DefaultTheme}>
       <StatusBar style={effectiveTheme === 'dark' ? 'light' : 'dark'} />
+      <VerificationBanner />
       <Stack screenOptions={{ headerShown: false }}>
         <Stack.Screen name="(tabs)" />
         <Stack.Screen name="modal" options={{ presentation: 'modal' }} />

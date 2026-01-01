@@ -205,7 +205,12 @@ export default function RegisterScreen() {
         setLoading(true);
         try {
             await registerUser(email, password, username, displayName, dob);
-            router.replace('/(onboarding)/welcome');
+
+            // Navigate to verification screen with email param
+            router.replace({
+                pathname: '/(auth)/verify-email',
+                params: { email }
+            });
         } catch (error: any) {
             console.error(error);
             Alert.alert("Registration Failed", error.message || "An unknown error occurred");

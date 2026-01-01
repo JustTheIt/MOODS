@@ -8,13 +8,17 @@ export class MediaController {
         try {
             const timestamp = Math.round(new Date().getTime() / 1000);
             const signature = cloudinary.utils.api_sign_request(
-                { timestamp, upload_preset: 'moods_preset' }, // replace with your preset if needed
+                {
+                    timestamp,
+                    upload_preset: env.CLOUDINARY_UPLOAD_PRESET
+                },
                 env.CLOUDINARY_API_SECRET
             );
 
             res.json({
                 signature,
                 timestamp,
+                uploadPreset: env.CLOUDINARY_UPLOAD_PRESET,
                 apiKey: env.CLOUDINARY_API_KEY,
                 cloudName: env.CLOUDINARY_CLOUD_NAME,
             });

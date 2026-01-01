@@ -10,6 +10,7 @@ export class UserController {
             if (!user) return res.status(404).json({ message: 'User not found' });
             res.json(user);
         } catch (error: any) {
+            console.error(`Error fetching user ${req.params.userId}:`, error);
             res.status(500).json({ message: error.message });
         }
     }
@@ -32,6 +33,7 @@ export class UserController {
 
             res.json({ available: true });
         } catch (error: any) {
+            console.error('Error checking username:', error);
             res.status(500).json({ message: error.message });
         }
     }
@@ -44,6 +46,7 @@ export class UserController {
             const isTaken = await UserService.isEmailTaken(email);
             res.json({ available: !isTaken });
         } catch (error: any) {
+            console.error('Error checking email:', error);
             res.status(500).json({ message: error.message });
         }
     }
@@ -51,9 +54,11 @@ export class UserController {
     static async createUser(req: AuthRequest, res: Response) {
         try {
             const { userId } = req.params;
+            console.log(`Creating user profile for: ${userId}`, req.body);
             const user = await UserService.createUserProfile(userId, req.body);
             res.status(201).json(user);
         } catch (error: any) {
+            console.error('Error creating user:', error);
             res.status(500).json({ message: error.message });
         }
     }
@@ -92,6 +97,35 @@ export class UserController {
             await UserService.unfollowUser(userId, targetUserId);
             res.json({ message: 'User unfollowed' });
         } catch (error: any) {
+            res.status(500).json({ message: error.message });
+        }
+    }
+
+    static async getSuggestedUsers(req: AuthRequest, res: Response) {
+        try {
+            const userId = req.user?.uid;
+            const limit = parseInt(req.query.limit as string) || 15;
+
+            const suggestions = await UserService.getSuggestedUsers(userId, limit);
+            res.json({ users: suggestions });
+        } catch (error: any) {
+            console.error('Error getting suggested users:', error);
+            res.status(500).json({ message: error.message });
+        }
+    }
+
+    static async savePushToken(req: AuthRequest, res: Response) {
+        try {
+            const userId = req.user?.uid;
+            const { token } = req.body;
+            if (!userId || !token) {
+                return res.status(400).json({ message: 'Missing userId or token' });
+            }
+
+            await UserService.savePushToken(userId, token);
+            res.json({ message: 'Push token saved successfully' });
+        } catch (error: any) {
+            console.error('Error saving push token:', error);
             res.status(500).json({ message: error.message });
         }
     }

@@ -18,6 +18,10 @@ interface EmailValidationResult {
 /**
  * Validates and normalizes email on the server side
  */
+import { detectEmailTypo } from '@/utils/emailTypo';
+
+// ...
+
 export const validateEmail = (email: string): EmailValidationResult => {
     if (!email || typeof email !== 'string') {
         return {
@@ -49,9 +53,21 @@ export const validateEmail = (email: string): EmailValidationResult => {
         };
     }
 
+    const normalized = trimmed.toLowerCase();
+
+    // Check for typos
+    const suggestion = detectEmailTypo(normalized);
+    if (suggestion) {
+        return {
+            isValid: false,
+            error: `Did you mean ${suggestion}?`,
+            normalized: ''
+        };
+    }
+
     return {
         isValid: true,
-        normalized: trimmed.toLowerCase()
+        normalized
     };
 };
 
@@ -170,6 +186,7 @@ export const validateEmailMiddleware = (req: Request, res: Response, next: NextF
     const result = validateEmail(email);
 
     if (!result.isValid) {
+        console.log(`Validation failed for email: ${result.error}`);
         return res.status(400).json({
             error: result.error,
             field: 'email'

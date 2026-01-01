@@ -8,8 +8,10 @@ interface MoodContextType {
     user: User;
     moodLogs: MoodLog[];
     settings: AppSettings;
-    logMood: (mood: MoodLog) => void;
-    deleteMoodLog: (id: string) => void;
+    profileLoading: boolean;
+    moodLoading: boolean;
+    logMood: (mood: MoodLog) => Promise<void>;
+    deleteMoodLog: (id: string) => Promise<void>;
     toggleSetting: (key: keyof AppSettings) => void;
     updateSettings: (key: keyof AppSettings, value: boolean | any) => void;
     refreshUserProfile: () => Promise<void>;
@@ -18,7 +20,9 @@ interface MoodContextType {
 export const MoodContext = createContext<MoodContextType | undefined>(undefined);
 
 export function MoodProvider({ children }: { children: ReactNode }) {
-    const { user: authUser } = useAuth();
+    const { user: authUser, authLoading } = useAuth();
+    const [profileLoading, setProfileLoading] = useState(false);
+    const [moodLoading, setMoodLoading] = useState(false);
     const [user, setUser] = useState<User>({
         id: 'guest',
         username: 'Guest',
@@ -32,28 +36,32 @@ export function MoodProvider({ children }: { children: ReactNode }) {
 
     // Fetch real user profile
     useEffect(() => {
-        if (authUser) {
-            getUserProfile(authUser.uid).then(async (profile) => {
-                if (profile) {
-                    setUser({
-                        id: authUser.uid,
-                        username: profile.username,
-                        name: profile.displayName || profile.username,
-                        displayName: profile.displayName || profile.username,
-                        email: profile.email || authUser.email || "",
-                        handle: profile.isAnonymous ? 'Guest' : '@' + profile.username,
-                        avatar: profile.avatarUrl || 'https://via.placeholder.com/150',
-                        avatarUrl: profile.avatarUrl || 'https://via.placeholder.com/150',
-                        moodAura: profile.themeColor,
-                        themeColor: profile.themeColor,
-                        dominantMood: profile.dominantMood as MoodType,
-                        onboardingCompleted: profile.onboardingCompleted,
-                        bio: profile.bio
-                    });
-                } else {
-                    // Profile doesn't exist yet, attempt to create it (Self-healing)
-                    console.log("User profile not found. Auto-creating profile for:", authUser.uid);
-                    try {
+        const fetchProfile = async () => {
+            if (authLoading) return;
+
+            if (authUser) {
+                setProfileLoading(true);
+                try {
+                    const profile = await getUserProfile(authUser.uid);
+                    if (profile) {
+                        setUser({
+                            id: authUser.uid,
+                            username: profile.username,
+                            name: profile.displayName || profile.username,
+                            displayName: profile.displayName || profile.username,
+                            email: profile.email || authUser.email || "",
+                            handle: profile.isAnonymous ? 'Guest' : '@' + profile.username,
+                            avatar: profile.avatarUrl || 'https://via.placeholder.com/150',
+                            avatarUrl: profile.avatarUrl || 'https://via.placeholder.com/150',
+                            moodAura: profile.themeColor,
+                            themeColor: profile.themeColor,
+                            dominantMood: profile.dominantMood as MoodType,
+                            onboardingCompleted: profile.onboardingCompleted,
+                            bio: profile.bio
+                        });
+                    } else {
+                        // Profile doesn't exist yet, attempt to create it (Self-healing)
+                        console.log("User profile not found. Auto-creating profile for:", authUser.uid);
                         const newProfile = await createUserProfile(authUser.uid, {
                             email: authUser.email || "",
                             username: authUser.email?.split('@')[0] || 'User',
@@ -76,51 +84,72 @@ export function MoodProvider({ children }: { children: ReactNode }) {
                             });
                             console.log("Auto-created profile successfully.");
                         }
-                    } catch (createError) {
-                        console.error("Failed to auto-create user profile:", createError);
-                        // Fallback to local guest state if creation fails
-                        setUser({
-                            id: authUser.uid,
-                            username: authUser.email?.split('@')[0] || 'User',
-                            name: authUser.email?.split('@')[0] || 'User',
-                            displayName: authUser.email?.split('@')[0] || 'User',
-                            email: authUser.email || "",
-                            handle: '@' + (authUser.email?.split('@')[0] || 'user'),
-                            avatar: 'https://via.placeholder.com/150',
-                            moodAura: '#4ECDC4'
-                        });
                     }
+                } catch (error) {
+                    console.error('Error in profile fetch/create logic:', error);
+                    // Fallback to basic user profile based on auth data
+                    setUser({
+                        id: authUser.uid,
+                        username: authUser.email?.split('@')[0] || 'User',
+                        name: authUser.email?.split('@')[0] || 'User',
+                        displayName: authUser.email?.split('@')[0] || 'User',
+                        email: authUser.email || "",
+                        handle: '@' + (authUser.email?.split('@')[0] || 'user'),
+                        avatar: 'https://via.placeholder.com/150',
+                        moodAura: '#4ECDC4'
+                    });
+                } finally {
+                    setProfileLoading(false);
                 }
-            }).catch(error => {
-                console.error('Error fetching user profile:', error);
-                // On error, set a basic user profile
+            } else {
+                // No authUser, reset to guest
                 setUser({
-                    id: authUser.uid,
-                    username: authUser.email?.split('@')[0] || 'User',
-                    name: authUser.email?.split('@')[0] || 'User',
-                    displayName: authUser.email?.split('@')[0] || 'User',
-                    email: authUser.email || "",
-                    handle: '@' + (authUser.email?.split('@')[0] || 'user'),
+                    id: 'guest',
+                    username: 'Guest',
+                    name: 'Guest',
+                    displayName: 'Guest',
+                    email: '',
+                    handle: 'guest',
                     avatar: 'https://via.placeholder.com/150',
-                    moodAura: '#4ECDC4'
+                    moodAura: '#ccc'
                 });
-            });
-        }
-    }, [authUser]);
+            }
+        };
+
+        fetchProfile();
+    }, [authUser, authLoading]);
 
     const [moodLogs, setMoodLogs] = useState<MoodLog[]>([]);
 
     useEffect(() => {
         const fetchHistory = async () => {
+            if (authLoading) {
+                console.log("[MoodContext] Waiting for auth to hydrate...");
+                return;
+            }
+
             if (authUser) {
-                const logs = await getMoodHistory();
-                setMoodLogs(logs);
+                console.log("[MoodContext] Starting mood history fetch for:", authUser.uid);
+                setMoodLoading(true);
+                try {
+                    const logs = await getMoodHistory();
+                    console.log(`[MoodContext] Successfully fetched ${logs?.length || 0} logs`);
+                    setMoodLogs(logs || []);
+                } catch (error) {
+                    console.error("[MoodContext] Error fetching mood history:", error);
+                    setMoodLogs([]);
+                } finally {
+                    setMoodLoading(false);
+                    console.log("[MoodContext] Fetch finished, loading set to false");
+                }
             } else {
+                console.log("[MoodContext] No auth user, clearing logs");
                 setMoodLogs([]);
+                setMoodLoading(false); // Reset loading just in case
             }
         };
         fetchHistory();
-    }, [authUser]);
+    }, [authUser, authLoading]);
 
     // Settings State
     const [settings, setSettings] = useState<AppSettings>({
@@ -199,6 +228,8 @@ export function MoodProvider({ children }: { children: ReactNode }) {
             user,
             moodLogs,
             settings,
+            profileLoading,
+            moodLoading,
             logMood,
             deleteMoodLog,
             toggleSetting,

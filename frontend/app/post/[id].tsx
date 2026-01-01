@@ -2,6 +2,7 @@ import { Avatar } from '@/components/Avatar';
 import PostCard from '@/components/PostCard';
 import { THEME } from '@/constants/theme';
 import { useMood } from '@/context/MoodContext';
+import { useRequireVerification } from '@/hooks/useRequireVerification';
 import { auth } from '@/lib/auth';
 import { addComment, getComments, getPostById } from '@/services/postService';
 import { Comment, Post } from '@/types';
@@ -29,6 +30,7 @@ export default function PostDetailScreen() {
     const theme = colorScheme === 'dark' ? THEME.dark : THEME.light;
     const router = useRouter();
     const { settings } = useMood();
+    const { requireVerification } = useRequireVerification();
     const currentUser = auth.currentUser;
 
     const [post, setPost] = useState<Post | null>(null);
@@ -59,23 +61,26 @@ export default function PostDetailScreen() {
         }
     };
 
-    const handleSendComment = async () => {
+    const handleSendComment = () => {
         if (!newComment.trim() || !currentUser || !id) return;
-        setSending(true);
-        try {
-            await addComment(id, currentUser.uid, newComment.trim());
-            setNewComment('');
-            // Refresh comments
-            const updatedComments = await getComments(id);
-            setComments(updatedComments);
-            // Also refresh post to update comment count (optional, but good)
-            const updatedPost = await getPostById(id);
-            if (updatedPost) setPost(updatedPost);
-        } catch (error) {
-            Alert.alert("Error", "Could not post comment.");
-        } finally {
-            setSending(false);
-        }
+
+        requireVerification(async () => {
+            setSending(true);
+            try {
+                await addComment(id, currentUser.uid, newComment.trim());
+                setNewComment('');
+                // Refresh comments
+                const updatedComments = await getComments(id);
+                setComments(updatedComments);
+                // Also refresh post to update comment count (optional, but good)
+                const updatedPost = await getPostById(id);
+                if (updatedPost) setPost(updatedPost);
+            } catch (error) {
+                Alert.alert("Error", "Could not post comment.");
+            } finally {
+                setSending(false);
+            }
+        });
     };
 
     const renderComment = ({ item }: { item: Comment }) => (

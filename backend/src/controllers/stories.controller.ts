@@ -11,6 +11,7 @@ export class StoryController {
             const story = await StoryService.createStory(userId, req.body);
             res.status(201).json(story);
         } catch (error: any) {
+            console.error('Error creating story:', error);
             res.status(500).json({ message: error.message });
         }
     }
@@ -20,6 +21,7 @@ export class StoryController {
             const stories = await StoryService.getActiveStories();
             res.json(stories);
         } catch (error: any) {
+            console.error('Error fetching active stories:', error);
             res.status(500).json({ message: error.message });
         }
     }

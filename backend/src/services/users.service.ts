@@ -61,6 +61,11 @@ export class UserService {
                 ...data,
                 id: userId,
                 createdAt: admin.firestore.FieldValue.serverTimestamp(),
+                notificationSettings: {
+                    likes: true,
+                    comments: true,
+                    reminders: true
+                }
             };
             await userRef.set(newUser);
             return newUser;
@@ -97,5 +102,129 @@ export class UserService {
         batch.delete(followersRef);
 
         await batch.commit();
+    }
+
+    static async savePushToken(userId: string, token: string) {
+        const userRef = db.collection('users').doc(userId);
+        await userRef.update({
+            pushTokens: admin.firestore.FieldValue.arrayUnion(token)
+        });
+    }
+
+    static async removePushToken(userId: string, token: string) {
+        const userRef = db.collection('users').doc(userId);
+        await userRef.update({
+            pushTokens: admin.firestore.FieldValue.arrayRemove(token)
+        });
+    }
+
+    static async getSuggestedUsers(currentUserId?: string, limit: number = 15) {
+        try {
+            // Get current user's profile to understand their mood preferences
+            let currentUserProfile: any = null;
+            let followingIds: string[] = [];
+
+            if (currentUserId) {
+                currentUserProfile = await this.getUserProfile(currentUserId);
+
+                // Get list of users already following
+                const followingSnapshot = await db.collection('users')
+                    .doc(currentUserId)
+                    .collection('following')
+                    .get();
+                followingIds = followingSnapshot.docs.map(doc => doc.id);
+            }
+
+            // Fetch active users (users with recent mood activity)
+            const usersSnapshot = await db.collection('users')
+                .limit(100) // Get pool of candidates
+                .get();
+
+            const candidateUsers = await Promise.all(
+                usersSnapshot.docs
+                    .filter(doc => doc.id !== currentUserId) // Exclude self
+                    .filter(doc => !followingIds.includes(doc.id)) // Exclude already following
+                    .map(async (doc) => {
+                        const userData = doc.data();
+
+                        // Get user's recent mood activity
+                        const recentMoods = await db.collection('moods')
+                            .where('userId', '==', doc.id)
+                            .get();
+
+                        // Sort and limit in-memory to avoid index requirement
+                        const moodData = recentMoods.docs
+                            .map(m => m.data())
+                            .sort((a, b) => (b.timestamp?.toMillis() || 0) - (a.timestamp?.toMillis() || 0))
+                            .slice(0, 5);
+
+                        // Calculate priority score
+                        let priorityScore = 0;
+
+                        // 1. Shared mood match (weight: 3.0)
+                        if (currentUserProfile?.dominantMood && userData.dominantMood) {
+                            if (currentUserProfile.dominantMood === userData.dominantMood) {
+                                priorityScore += 3.0;
+                            }
+                        }
+
+                        // 2. Mood intensity similarity (weight: 2.0)
+                        if (moodData.length > 0 && currentUserProfile) {
+                            const avgIntensity = moodData.reduce((sum, m) => sum + (m.intensity || 0.5), 0) / moodData.length;
+                            const currentUserIntensity = 0.5; // Default if not available
+                            const intensitySimilarity = 1 - Math.abs(avgIntensity - currentUserIntensity);
+                            priorityScore += intensitySimilarity * 2.0;
+                        }
+
+                        // 3. Recent activity (weight: 1.5)
+                        const recentActivityBoost = moodData.length > 0 ? 1.5 : 0;
+                        priorityScore += recentActivityBoost;
+
+                        // 4. Mutual interactions (weight: 2.5)
+                        // Check if this user has liked/commented on current user's posts
+                        if (currentUserId) {
+                            const interactionsSnapshot = await db.collection('posts')
+                                .where('userId', '==', currentUserId)
+                                .limit(10)
+                                .get();
+
+                            let mutualInteractions = 0;
+                            for (const postDoc of interactionsSnapshot.docs) {
+                                const likeDoc = await db.collection('posts')
+                                    .doc(postDoc.id)
+                                    .collection('likes')
+                                    .doc(doc.id)
+                                    .get();
+                                if (likeDoc.exists) mutualInteractions++;
+                            }
+                            priorityScore += mutualInteractions * 2.5;
+                        }
+
+                        // Add randomness for diversity (0-0.5)
+                        priorityScore += Math.random() * 0.5;
+
+                        return {
+                            id: doc.id,
+                            ...userData,
+                            priorityScore,
+                            sharedMoods: currentUserProfile?.dominantMood === userData.dominantMood
+                                ? [userData.dominantMood]
+                                : [],
+                            isFollowing: false,
+                            createdAt: userData.createdAt ? (userData.createdAt as admin.firestore.Timestamp).toMillis() : null
+                        };
+                    })
+            );
+
+            // Sort by priority score (descending) and limit
+            const suggestedUsers = candidateUsers
+                .sort((a, b) => b.priorityScore - a.priorityScore)
+                .slice(0, limit);
+
+            return suggestedUsers;
+        } catch (error) {
+            console.error('Error getting suggested users:', error);
+            return [];
+        }
     }
 }

@@ -185,4 +185,143 @@ export class PostService {
             };
         });
     }
+
+    static async getTrendingPosts(limitNum: number = 20, moodFilter?: string, currentUserId?: string) {
+        try {
+            // Fetch recent posts (last 7 days for trending calculation)
+            const sevenDaysAgo = admin.firestore.Timestamp.fromMillis(Date.now() - 7 * 24 * 60 * 60 * 1000);
+
+            const snapshot = await db.collection('posts')
+                .where('createdAt', '>=', sevenDaysAgo)
+                .get();
+
+            // Filter by mood and sort by createdAt desc in-memory to avoid index requirement
+            let candidateDocs = snapshot.docs;
+
+            if (moodFilter) {
+                candidateDocs = candidateDocs.filter(doc => doc.data().mood === moodFilter);
+            }
+
+            candidateDocs = candidateDocs
+                .sort((a, b) => {
+                    const aTime = a.data().createdAt?.toMillis() || 0;
+                    const bTime = b.data().createdAt?.toMillis() || 0;
+                    return bTime - aTime;
+                })
+                .slice(0, 200);
+
+            // Calculate trending scores for each post
+            const postsWithScores = await Promise.all(
+                candidateDocs.map(async (doc) => {
+                    const data = doc.data();
+                    const postId = doc.id;
+                    const createdAt = data.createdAt ? (data.createdAt as admin.firestore.Timestamp).toMillis() : Date.now();
+                    const ageInHours = (Date.now() - createdAt) / (1000 * 60 * 60);
+
+                    // Engagement metrics
+                    const likesCount = data.likesCount || 0;
+                    const commentsCount = data.commentsCount || 0;
+                    const repostsCount = data.repostsCount || 0;
+                    const moodIntensity = data.intensity || 0.5;
+
+                    // Calculate trending score
+                    // Formula: (likes * 1.5) + (comments * 2) + (reposts * 3) + (intensity * 2) + recencyBoost
+                    let trendingScore =
+                        (likesCount * 1.5) +
+                        (commentsCount * 2.0) +
+                        (repostsCount * 3.0) +
+                        (moodIntensity * 2.0);
+
+                    // Recency boost (exponential decay)
+                    let recencyBoost = 0;
+                    if (ageInHours < 1) {
+                        recencyBoost = 10;
+                    } else if (ageInHours < 6) {
+                        recencyBoost = 5;
+                    } else if (ageInHours < 24) {
+                        recencyBoost = 2;
+                    } else if (ageInHours < 48) {
+                        recencyBoost = 1;
+                    }
+                    trendingScore += recencyBoost;
+
+                    // Generate explainable trending reason
+                    let trendingReason = "Community resonance";
+                    if (recencyBoost >= 10) {
+                        trendingReason = "Trending right now";
+                    } else if (repostsCount > 5) {
+                        trendingReason = "Highly shared vibe";
+                    } else if (moodIntensity > 0.8) {
+                        trendingReason = "Intense aura";
+                    } else if (commentsCount > 3) {
+                        trendingReason = "Inspiring conversation";
+                    }
+
+                    // Check if current user liked this post
+                    let isLiked = false;
+                    if (currentUserId) {
+                        const likeDoc = await db.collection('posts').doc(postId).collection('likes').doc(currentUserId).get();
+                        isLiked = likeDoc.exists;
+                    }
+
+                    const post: any = {
+                        id: postId,
+                        ...data,
+                        timestamp: createdAt,
+                        trendingScore,
+                        trendingReason,
+                        isLiked
+                    };
+
+                    // Enrich Repost Data
+                    if (data.originalPostId) {
+                        try {
+                            const originalPostDoc = await db.collection('posts').doc(data.originalPostId).get();
+                            if (originalPostDoc.exists) {
+                                const originalData = originalPostDoc.data();
+                                post.originalPost = {
+                                    id: originalPostDoc.id,
+                                    ...originalData,
+                                    timestamp: originalData?.createdAt ? (originalData.createdAt as admin.firestore.Timestamp).toMillis() : Date.now(),
+                                };
+
+                                // Fetch original author
+                                const authorDoc = await db.collection('users').doc(originalData?.userId).get();
+                                if (authorDoc.exists) {
+                                    const authorData = authorDoc.data();
+                                    post.originalAuthor = {
+                                        id: authorDoc.id,
+                                        ...authorData,
+                                        username: authorData?.username,
+                                        avatarUrl: authorData?.avatarUrl || authorData?.avatar,
+                                    };
+                                }
+                            }
+                        } catch (err) {
+                            console.error('Error enriching repost:', err);
+                        }
+                    }
+
+                    return post;
+                })
+            );
+
+            // Sort by trending score (descending) and limit
+            const trendingPosts = postsWithScores
+                .sort((a, b) => b.trendingScore - a.trendingScore)
+                .slice(0, limitNum)
+                .map((post, index) => ({
+                    ...post,
+                    trendingRank: index + 1
+                }));
+
+            return {
+                posts: trendingPosts,
+                lastId: null // Trending doesn't support pagination
+            };
+        } catch (error) {
+            console.error('Error getting trending posts:', error);
+            return { posts: [], lastId: null };
+        }
+    }
 }

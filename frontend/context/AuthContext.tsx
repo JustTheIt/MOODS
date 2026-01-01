@@ -1,29 +1,37 @@
-import { signOutUser, subscribeToAuthChanges } from '@/services/authService';
+import { isEmailVerified, reloadUser, sendVerificationEmail, signOutUser, subscribeToAuthChanges } from '@/services/authService';
 import { User } from 'firebase/auth';
 import React, { createContext, useContext, useEffect, useState } from 'react';
 
 interface AuthContextType {
     user: User | null;
-    loading: boolean;
+    authLoading: boolean;
+    emailVerified: boolean;
     logout: () => Promise<void>;
+    sendVerification: () => Promise<void>;
+    checkVerification: () => Promise<boolean>;
 }
 
 const AuthContext = createContext<AuthContextType>({
     user: null,
-    loading: true,
+    authLoading: true,
+    emailVerified: false,
     logout: async () => { },
+    sendVerification: async () => { },
+    checkVerification: async () => false,
 });
 
 export const useAuth = () => useContext(AuthContext);
 
 export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     const [user, setUser] = useState<User | null>(null);
-    const [loading, setLoading] = useState(true);
+    const [authLoading, setAuthLoading] = useState(true);
+    const [emailVerified, setEmailVerified] = useState(false);
 
     useEffect(() => {
         const unsubscribe = subscribeToAuthChanges((user) => {
             setUser(user);
-            setLoading(false);
+            setEmailVerified(user?.emailVerified ?? false);
+            setAuthLoading(false);
         });
 
         return () => unsubscribe();
@@ -37,8 +45,26 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         }
     };
 
+    const sendVerification = async () => {
+        await sendVerificationEmail();
+    };
+
+    const checkVerification = async () => {
+        await reloadUser();
+        const verified = isEmailVerified();
+        setEmailVerified(verified);
+        return verified;
+    };
+
     return (
-        <AuthContext.Provider value={{ user, loading, logout }}>
+        <AuthContext.Provider value={{
+            user,
+            authLoading,
+            emailVerified,
+            logout,
+            sendVerification,
+            checkVerification
+        }}>
             {children}
         </AuthContext.Provider>
     );
