@@ -2,9 +2,9 @@ import { MoodLog, Post, User } from "@/types";
 import { subDays } from 'date-fns';
 
 export const MOCK_USERS: Record<string, User> = {
-    'u1': { id: 'u1', username: 'Alice', name: 'Alice', handle: '@alice', avatar: 'https://i.pravatar.cc/150?u=a', moodAura: 'happy' },
-    'u2': { id: 'u2', username: 'Bob', name: 'Bob', handle: '@bob', avatar: 'https://i.pravatar.cc/150?u=b', moodAura: 'sad' },
-    'u3': { id: 'u3', username: 'Charlie', name: 'Charlie', handle: '@charlie', avatar: 'https://i.pravatar.cc/150?u=c', moodAura: 'calm' },
+    'u1': { id: 'u1', username: 'Alice', name: 'Alice', displayName: 'Alice', email: 'alice@example.com', handle: '@alice', avatar: 'https://i.pravatar.cc/150?u=a', moodAura: 'happy' },
+    'u2': { id: 'u2', username: 'Bob', name: 'Bob', displayName: 'Bob', email: 'bob@example.com', handle: '@bob', avatar: 'https://i.pravatar.cc/150?u=b', moodAura: 'sad' },
+    'u3': { id: 'u3', username: 'Charlie', name: 'Charlie', displayName: 'Charlie', email: 'charlie@example.com', handle: '@charlie', avatar: 'https://i.pravatar.cc/150?u=c', moodAura: 'calm' },
 };
 
 export const MOCK_POSTS: Post[] = [

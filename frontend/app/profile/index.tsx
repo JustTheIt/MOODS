@@ -47,7 +47,7 @@ export default function MyProfileScreen() {
                 setProfile(data);
                 setUsername(data.username);
                 setBio(data.bio || '');
-                setAvatarUrl(data.avatarUrl);
+                setAvatarUrl(data.avatarUrl || null);
             }
         } catch (error) {
             console.error("Error fetching profile:", error);
@@ -72,7 +72,8 @@ export default function MyProfileScreen() {
     const uploadAvatar = async (uri: string) => {
         setSaving(true);
         try {
-            const uploadedUrl = await uploadToCloudinary(uri, 'mood/avatars');
+            const result = await uploadToCloudinary(uri, 'mood/avatars');
+            const uploadedUrl = result.url;
             setAvatarUrl(uploadedUrl);
             await updateUserProfile(user!.uid, { avatarUrl: uploadedUrl });
             Alert.alert("Success", "Profile picture updated!");

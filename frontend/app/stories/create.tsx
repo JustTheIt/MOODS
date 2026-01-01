@@ -76,7 +76,8 @@ export default function CreateStoryScreen() {
             let mediaUrl = null;
             if (imageUri) {
                 console.log("Uploading story image to Cloudinary...");
-                mediaUrl = await uploadToCloudinary(imageUri, 'mood/stories');
+                const result = await uploadToCloudinary(imageUri, 'mood/stories');
+                mediaUrl = result.url;
                 console.log("Image uploaded successfully:", mediaUrl);
             }
 
