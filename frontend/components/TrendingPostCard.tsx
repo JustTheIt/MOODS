@@ -62,7 +62,7 @@ export default function TrendingPostCard({ post, user, rank }: TrendingPostCardP
                     </View>
 
                     {/* Regular post card */}
-                    <PostCard post={post} user={user} />
+                    <PostCard post={post} user={user} flat={true} />
                 </View>
             </LinearGradient>
         </View>

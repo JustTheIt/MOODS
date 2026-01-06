@@ -1,54 +1,83 @@
 rules_version = '2';
+
 service cloud.firestore {
   match /databases/{database}/documents {
+    
+    // Helper function to check if the user is authenticated
+    function isAuthenticated() {
+      return request.auth != null;
+    }
 
+    // User profiles - Only readable by authenticated users
+    // Writes should only happen via Backend API (admin SDK)
     match /users/{userId} {
-      allow read: if request.auth != null;
-      allow write: if request.auth != null &&
-        request.auth.uid == userId;
+      allow read: if isAuthenticated();
+      allow write: if false;
 
+      // Viewed stories subcollection
       match /viewedStories/{storyId} {
-        allow read, write: if request.auth != null && request.auth.uid == userId;
+        allow read: if isAuthenticated() && request.auth.uid == userId;
+        allow write: if false;
+      }
+      
+      // Followers/Following subcollections
+      match /followers/{followerId} {
+        allow read: if isAuthenticated();
+        allow write: if false;
+      }
+      match /following/{followedId} {
+        allow read: if isAuthenticated();
+        allow write: if false;
       }
     }
 
+    // Posts - Publicly readable, but writes only via Backend
     match /posts/{postId} {
       allow read: if true;
-      allow create: if request.auth != null;
-      allow update: if request.auth != null && (
-        request.auth.uid == resource.data.userId ||
-        request.resource.data.diff(resource.data).affectedKeys().hasOnly(['likesCount', 'commentsCount', 'repostsCount'])
-      );
-      allow delete: if request.auth.uid == resource.data.userId;
+      allow write: if false;
 
+      // Likes subcollection
       match /likes/{userId} {
         allow read: if true;
-        allow write: if request.auth != null && request.auth.uid == userId;
+        allow write: if false;
       }
 
+      // Comments subcollection
       match /comments/{commentId} {
         allow read: if true;
-        allow create: if request.auth != null;
-        allow update, delete: if request.auth.uid == resource.data.userId;
+        allow write: if false;
       }
     }
 
+    // Stories - Publicly readable, but writes only via Backend
     match /stories/{storyId} {
       allow read: if true;
-      allow create: if request.auth != null;
-      allow delete: if request.auth.uid == resource.data.userId;
+      allow write: if false;
     }
 
+    // Mood Logs - Private to owner, but writes only via Backend
     match /moods/{moodId} {
-      allow read: if request.auth != null && resource.data.userId == request.auth.uid;
-      allow create: if request.auth != null && request.resource.data.userId == request.auth.uid;
-      allow update, delete: if request.auth != null && resource.data.userId == request.auth.uid;
+      allow read: if isAuthenticated() && resource.data.userId == request.auth.uid;
+      allow write: if false;
     }
 
+    // Connections - Private to participants, but writes only via Backend
     match /connections/{connectionId} {
-      allow read: if request.auth != null && 
+      allow read: if isAuthenticated() && 
         (request.auth.uid == resource.data.userA || request.auth.uid == resource.data.userB);
-      allow write: if request.auth != null;
+      allow write: if false;
+    }
+
+    // Notifications - Private to user, but writes only via Backend
+    match /notifications/{notificationId} {
+      allow read: if isAuthenticated() && resource.data.userId == request.auth.uid;
+      allow write: if false;
+    }
+
+    // Email OTPs - Backend only (contains sensitive verification codes)
+    match /email_otps/{email} {
+      allow read: if false;
+      allow write: if false;
     }
   }
 }

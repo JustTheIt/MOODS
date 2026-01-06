@@ -1,10 +1,10 @@
+import { HeartHandshakeImage } from '@/components/HeartHandshakeImage';
 import { useColorScheme } from '@/components/useColorScheme';
 import { THEME } from '@/constants/theme';
 import { useAuth } from '@/context/AuthContext';
 import { useMood } from '@/context/MoodContext';
 import { updateUserProfile } from '@/services/userService';
 import { useRouter } from 'expo-router';
-import { HeartHandshake } from 'lucide-react-native';
 import React from 'react';
 import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -42,7 +42,7 @@ export default function WelcomeScreen() {
         <SafeAreaView style={[styles.container, { backgroundColor: theme.background }]}>
             <View style={styles.content}>
                 <View style={styles.iconContainer}>
-                    <HeartHandshake size={64} color={THEME.primary} />
+                    <HeartHandshakeImage size={100} color={THEME.primary} />
                 </View>
                 <Text style={[styles.title, { color: theme.text }]}>Welcome to MOODS</Text>
                 <Text style={[styles.subtitle, { color: theme.textSecondary }]}>
@@ -59,6 +59,8 @@ export default function WelcomeScreen() {
                 >
                     <Text style={styles.buttonText}>Personalize My Profile</Text>
                 </TouchableOpacity>
+
+
 
                 <TouchableOpacity
                     style={styles.skipButton}

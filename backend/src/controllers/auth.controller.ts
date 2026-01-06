@@ -1,4 +1,5 @@
 import { auth, db } from '@/config/firebase';
+import { EmailService } from '@/services/email.service';
 import { OTPService } from '@/services/otp.service';
 import { UserService } from '@/services/users.service';
 import { Request, Response } from 'express';
@@ -8,7 +9,7 @@ export class AuthController {
     // Step 1: Register (Create inactive user + Send OTP)
     static async register(req: Request, res: Response) {
         try {
-            const { email, password, username, dateOfBirth } = req.body;
+            const { email, password, username, displayName, dateOfBirth } = req.body;
 
             // 1. Check if username/email taken
             const emailTaken = await UserService.isEmailTaken(email);
@@ -17,18 +18,18 @@ export class AuthController {
             const usernameTaken = await UserService.isUsernameTaken(username);
             if (usernameTaken) return res.status(409).json({ message: 'Username is taken' });
 
-            // 2. Create Firebase Auth User (Inactive logic managed by app level check usually, 
-            // but here we just create them. In a real strict app, we might create them disabled)
+            // 2. Create Firebase Auth User
             const userRecord = await auth.createUser({
                 email,
                 password,
-                displayName: username,
+                displayName: displayName || username,
             });
 
             // 3. Create User Profile
             await UserService.createUserProfile(userRecord.uid, {
                 email,
                 username,
+                displayName: displayName || username,
                 dateOfBirth,
                 emailVerified: false, // Important flag
             });
@@ -43,15 +44,14 @@ export class AuthController {
             console.log('========================================\n');
 
             try {
-                // await EmailService.sendOTP(email, otp);
+                await EmailService.sendOTP(email, otp);
             } catch (emailError: any) {
-                console.log(`[Auth] SMTP failed, forcing success response. Error: ${emailError.message}`);
+                console.error(`[Auth] ❌ SMTP failed for ${email}. Error:`, emailError.message);
 
                 return res.status(201).json({
-                    message: 'Account created! (Check terminal for OTP code)',
+                    message: 'Account created! (Note: Email delivery failed, check server logs for code)',
                     userId: userRecord.uid,
                     email,
-                    debugOTP: otp
                 });
             }
 
@@ -132,14 +132,13 @@ export class AuthController {
             console.log('========================================\n');
 
             try {
-                // await EmailService.sendOTP(email, otp);
-                return res.json({ message: 'Verification code sent!' });
+                await EmailService.sendOTP(email, otp);
+                return res.json({ message: 'Verification code sent to your email!' });
             } catch (emailError: any) {
-                console.log(`[Auth] SMTP failed, forcing success response. Error: ${emailError.message}`);
+                console.error(`[Auth] ❌ SMTP resend failed for ${email}. Error:`, emailError.message);
 
                 return res.status(200).json({
-                    message: 'Check your terminal for the verification code!',
-                    debugOTP: otp,
+                    message: 'Code generated! (Note: Email delivery failed, check server logs)',
                     traceId: 'v3_force_success'
                 });
             }

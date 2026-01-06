@@ -112,7 +112,7 @@ export default function ProfileScreen() {
                     >
                         <Avatar
                             uri={localAvatarUrl || user.avatar}
-                            name={user.name}
+                            name={user.displayName || user.name}
                             size={96}
                         />
                         <View style={[styles.cameraIconOverlay, { backgroundColor: moodColor.primary }]}>
@@ -171,7 +171,7 @@ export default function ProfileScreen() {
                                     <View style={{ padding: 2, borderRadius: 24, borderWidth: 1, borderColor: moodColor.primary }}>
                                         <Avatar
                                             uri={spirit.avatarUrl}
-                                            name={spirit.username}
+                                            name={spirit.displayName || spirit.username}
                                             size={44}
                                         />
                                     </View>

@@ -4,6 +4,7 @@ import { useMood } from '@/context/MoodContext';
 import { auth } from '@/lib/auth';
 import { checkPostLiked, deletePost, repostPost, toggleLikePost } from '@/services/postService';
 import { Post, User } from '@/types';
+import { formatRelativeTime } from '@/utils/time.utils';
 import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
@@ -17,6 +18,7 @@ import { Avatar } from './Avatar';
 interface PostCardProps {
     post: Post;
     user: User | any;
+    flat?: boolean;
 }
 
 function VideoPlayer({ uri }: { uri: string }) {
@@ -36,7 +38,7 @@ function VideoPlayer({ uri }: { uri: string }) {
     );
 }
 
-export default function PostCard({ post, user }: PostCardProps) {
+export default function PostCard({ post, user, flat = false }: PostCardProps) {
     const colorScheme = useColorScheme();
     const theme = colorScheme === 'dark' ? THEME.dark : THEME.light;
     const router = useRouter();
@@ -195,7 +197,11 @@ export default function PostCard({ post, user }: PostCardProps) {
     };
 
     return (
-        <View style={[styles.card, { backgroundColor: moodColors.secondary }]}>
+        <View style={[
+            styles.card,
+            { backgroundColor: moodColors.secondary },
+            flat && { marginHorizontal: 0, marginBottom: 0, elevation: 0, shadowOpacity: 0, borderRadius: 0 }
+        ]}>
             {/* Intensity Aura */}
             {settings.glowIntensity && (
                 <Animated.View style={[StyleSheet.absoluteFill, animatedGlowStyle]}>
@@ -216,7 +222,7 @@ export default function PostCard({ post, user }: PostCardProps) {
                 >
                     <Avatar
                         uri={post.anonymous ? null : (user.avatarUrl || user.avatar)}
-                        name={post.anonymous ? 'A' : (user.username || user.name)}
+                        name={post.anonymous ? 'Anonymous' : (user.displayName || user.username || user.name)}
                         size={40}
                     />
                 </TouchableOpacity>
@@ -229,8 +235,8 @@ export default function PostCard({ post, user }: PostCardProps) {
                             {post.anonymous ? 'Anonymous Soul' : (user.username || user.name)}
                         </Text>
                     </TouchableOpacity>
-                    <Text style={[styles.handle, { color: moodColors.text, opacity: 0.6 }]}>
-                        {post.anonymous ? 'vibrating...' : (user.handle || ('@' + user.username))} • {new Date(post.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                    <Text style={[styles.handle, { color: moodColors.text, opacity: 0.5 }]}>
+                        {post.anonymous ? 'vibrating...' : (user.handle || ('@' + user.username))} • {formatRelativeTime(post.timestamp)}
                         {post.originalPostId && <Text style={{ fontWeight: '600' }}> • Reposted</Text>}
                     </Text>
                 </View>
@@ -265,7 +271,7 @@ export default function PostCard({ post, user }: PostCardProps) {
                         <View style={styles.repostHeader}>
                             <Avatar
                                 uri={post.originalAuthor?.avatarUrl}
-                                name={post.originalAuthor?.username || post.originalAuthor?.name}
+                                name={post.originalAuthor?.displayName || post.originalAuthor?.username || post.originalAuthor?.name}
                                 size={24}
                                 style={{ marginRight: 8 }}
                             />
@@ -317,65 +323,77 @@ export default function PostCard({ post, user }: PostCardProps) {
 const styles = StyleSheet.create({
     card: {
         borderRadius: 24,
-        marginHorizontal: 15,
+        marginHorizontal: 12,
         marginBottom: 16,
+        paddingTop: 4,
         overflow: 'hidden',
+        // Subtle shadow for depth
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.05,
+        shadowRadius: 10,
+        elevation: 3,
     },
     header: {
         flexDirection: 'row',
         alignItems: 'center',
-        padding: 16,
-    },
-    avatar: {
-        width: 40,
-        height: 40,
-        borderRadius: 20,
-        marginRight: 12,
+        paddingHorizontal: 16,
+        paddingTop: 16,
+        paddingBottom: 12,
     },
     headerText: {
         flex: 1,
+        marginLeft: 4,
     },
     name: {
-        fontSize: 16,
-        fontWeight: '600',
+        fontSize: 15,
+        fontWeight: '700',
+        letterSpacing: -0.3,
     },
     handle: {
         fontSize: 12,
+        marginTop: 1,
     },
     content: {
         paddingHorizontal: 16,
-        paddingBottom: 12,
+        paddingBottom: 16,
     },
     moodChip: {
         alignSelf: 'flex-start',
-        paddingHorizontal: 12,
-        paddingVertical: 6,
-        borderRadius: 20,
+        paddingHorizontal: 10,
+        paddingVertical: 5,
+        borderRadius: 14,
         marginBottom: 12,
         flexDirection: 'row',
         alignItems: 'center',
-        gap: 8,
+        gap: 6,
+        borderWidth: 1,
+        borderColor: 'rgba(255,255,255,0.1)',
     },
     intensityDot: {
-        width: 6,
-        height: 6,
-        borderRadius: 3,
+        width: 8,
+        height: 8,
+        borderRadius: 4,
     },
     moodText: {
-        fontSize: 12,
-        fontWeight: '600',
+        fontSize: 11,
+        fontWeight: '800',
+        textTransform: 'uppercase',
+        letterSpacing: 0.5,
     },
     postText: {
-        fontSize: 15,
-        lineHeight: 22,
-        marginBottom: 10,
+        fontSize: 16,
+        lineHeight: 24,
+        marginBottom: 14,
+        fontWeight: '400',
     },
     mediaContainer: {
         width: '100%',
-        aspectRatio: 1,
-        borderRadius: 16,
+        aspectRatio: 1.2, // More professional landscape look
+        borderRadius: 20,
         overflow: 'hidden',
-        marginTop: 8,
+        marginTop: 4,
+        backgroundColor: 'rgba(0,0,0,0.02)',
     },
     postMedia: {
         width: '100%',
@@ -383,22 +401,26 @@ const styles = StyleSheet.create({
     },
     footer: {
         flexDirection: 'row',
-        padding: 12,
+        paddingHorizontal: 16,
+        paddingVertical: 14,
         borderTopWidth: StyleSheet.hairlineWidth,
-        gap: 20,
+        justifyContent: 'space-between',
+        alignItems: 'center',
     },
     actionButton: {
         flexDirection: 'row',
         alignItems: 'center',
         gap: 6,
+        paddingVertical: 4,
     },
     actionText: {
-        fontSize: 14,
+        fontSize: 13,
+        fontWeight: '600',
     },
     repostContainer: {
-        marginTop: 8,
-        padding: 12,
-        borderRadius: 12,
+        marginTop: 4,
+        padding: 14,
+        borderRadius: 16,
         borderWidth: 1,
     },
     repostHeader: {
@@ -406,14 +428,9 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         marginBottom: 8,
     },
-    repostAvatar: {
-        width: 24,
-        height: 24,
-        borderRadius: 12,
-        marginRight: 8,
-    },
     repostAuthor: {
-        fontWeight: '600',
+        fontWeight: '700',
         fontSize: 14,
+        letterSpacing: -0.2,
     }
 });
