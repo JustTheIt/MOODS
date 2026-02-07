@@ -5,9 +5,9 @@ import { SuggestedUser } from '@/services/suggestedUsersService';
 import { followUser } from '@/services/userService';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
-import React, { useEffect, useState } from 'react';
+import React, { useState } from 'react';
 import { ActivityIndicator, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
-import Animated, { useAnimatedStyle, useSharedValue, withRepeat, withSequence, withTiming } from 'react-native-reanimated';
+
 
 interface UserSuggestionCardProps {
     user: SuggestedUser;
@@ -23,24 +23,7 @@ export default function UserSuggestionCard({ user, isTopPriority, onFollowSucces
     const [loading, setLoading] = useState(false);
 
     // Animated glow for top priority users
-    const glowOpacity = useSharedValue(0.6);
 
-    useEffect(() => {
-        if (isTopPriority) {
-            glowOpacity.value = withRepeat(
-                withSequence(
-                    withTiming(1, { duration: 1500 }),
-                    withTiming(0.6, { duration: 1500 })
-                ),
-                -1,
-                true
-            );
-        }
-    }, [isTopPriority]);
-
-    const glowStyle = useAnimatedStyle(() => ({
-        opacity: glowOpacity.value
-    }));
 
     const dominantMood = (user.dominantMood || 'happy') as MoodType;
     const moodColor = MOOD_COLORS[dominantMood];
@@ -68,13 +51,11 @@ export default function UserSuggestionCard({ user, isTopPriority, onFollowSucces
             onPress={handleCardPress}
             activeOpacity={0.7}
         >
-            {/* Animated glow for top priority */}
             {isTopPriority && (
-                <Animated.View
+                <View
                     style={[
                         styles.glowContainer,
-                        glowStyle,
-                        { backgroundColor: moodColor.glow }
+                        { backgroundColor: moodColor.glow, opacity: 0.3 }
                     ]}
                 />
             )}

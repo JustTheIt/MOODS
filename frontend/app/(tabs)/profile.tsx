@@ -1,23 +1,28 @@
+
 import { Avatar } from '@/components/Avatar';
+import { Divider } from '@/components/Divider';
 import PostCard from '@/components/PostCard';
-import { useColorScheme } from '@/components/useColorScheme';
-import { MOOD_COLORS, MoodType, THEME } from '@/constants/theme';
+import { MoodType } from '@/constants/theme';
 import { useMood } from '@/context/MoodContext';
 import { uploadToCloudinary } from '@/services/cloudinaryService';
 import { findKindredSpirits } from '@/services/connectionService';
 import { getUserPosts } from '@/services/postService';
 import { getUserProfile, updateUserProfile, UserProfile } from '@/services/userService';
+import { colors } from '@/theme/colors';
+import { spacing } from '@/theme/spacing';
+import { typography } from '@/theme/typography';
 import { Post } from '@/types';
 import * as ImagePicker from 'expo-image-picker';
 import { useRouter } from 'expo-router';
-import { Camera, Settings, Zap } from 'lucide-react-native';
+import { Camera, Settings } from 'lucide-react-native';
 import { useEffect, useState } from 'react';
 import { ActivityIndicator, Alert, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { useTheme } from '@/hooks/useTheme';
+
 export default function ProfileScreen() {
-    const colorScheme = useColorScheme();
-    const theme = colorScheme === 'dark' ? THEME.dark : THEME.light;
+    const theme = useTheme();
     const { user, moodLogs } = useMood();
     const router = useRouter();
 
@@ -38,7 +43,6 @@ export default function ProfileScreen() {
         moodCounts[log.mood] = (moodCounts[log.mood] || 0) + 1;
     });
     const mostCommonMood = Object.keys(moodCounts).reduce((a, b) => moodCounts[a] > moodCounts[b] ? a : b, 'happy') as MoodType;
-    const moodColor = MOOD_COLORS[mostCommonMood] || MOOD_COLORS.happy;
 
     // Fetch Kindred Spirits
     useEffect(() => {
@@ -89,122 +93,90 @@ export default function ProfileScreen() {
     };
 
     const postCount = userPosts.length;
-    const connectionCount = kindredSpirits.length * 2 + 5; // Simulating some activity based on real spirits
+    const connectionCount = kindredSpirits.length * 2 + 5;
 
     return (
-        <SafeAreaView style={[styles.container, { backgroundColor: theme.background }]}>
+        <SafeAreaView style={[styles.container, { backgroundColor: theme.background }]} edges={['top']}>
+            <View style={styles.header}>
+                <Text style={[styles.screenTitle, { color: theme.text }]}>Identity</Text>
+                <TouchableOpacity onPress={() => router.push('/settings')}>
+                    <Settings size={22} color={theme.text} />
+                </TouchableOpacity>
+            </View>
+
             <ScrollView contentContainerStyle={styles.content}>
 
-                <View style={styles.header}>
-                    <Text style={[styles.title, { color: theme.text }]}>Identity</Text>
-                    <TouchableOpacity onPress={() => router.push('/settings')}>
-                        <Settings size={24} color={theme.text} />
-                    </TouchableOpacity>
-                </View>
-
-                {/* Profile Card */}
-                <View style={styles.profileSection}>
+                {/* Profile Header */}
+                <View style={styles.profileHeader}>
                     <TouchableOpacity
-                        style={styles.avatarContainer}
+                        style={styles.avatarWrapper}
                         onPress={handlePickImage}
                         disabled={uploading}
-                        activeOpacity={0.8}
                     >
                         <Avatar
                             uri={localAvatarUrl || user.avatar}
                             name={user.displayName || user.name}
-                            size={96}
+                            size={80}
                         />
-                        <View style={[styles.cameraIconOverlay, { backgroundColor: moodColor.primary }]}>
-                            <Camera size={18} color="#FFF" />
+                        <View style={styles.editIcon}>
+                            <Camera size={14} color="#FFF" />
                         </View>
                         {uploading && (
-                            <View style={styles.uploadingOverlay}>
-                                <ActivityIndicator size="large" color="#FFF" />
+                            <View style={styles.uploadOverlay}>
+                                <ActivityIndicator size="small" color="#FFF" />
                             </View>
                         )}
                     </TouchableOpacity>
-                    <Text style={[styles.name, { color: theme.text }]}>{user.name}</Text>
-                    <Text style={[styles.handle, { color: theme.textSecondary }]}>{user.handle}</Text>
 
-                    {user.bio && (
-                        <Text style={[styles.bio, { color: theme.text }]}>{user.bio}</Text>
-                    )}
-
-                    <TouchableOpacity
-                        style={[styles.editButton, { borderColor: theme.border }]}
-                        onPress={() => router.push('/profile/edit')}
-                    >
-                        <Text style={[styles.editButtonText, { color: theme.text }]}>Edit Profile</Text>
-                    </TouchableOpacity>
-
-                    <View style={[styles.moodBadge, { backgroundColor: moodColor.secondary }]}>
-                        <Text style={[styles.moodBadgeText, { color: moodColor.text }]}>Dominant Aura: {mostCommonMood} ✨</Text>
+                    <View style={styles.profileInfo}>
+                        <Text style={[styles.name, { color: theme.text }]}>{user.name}</Text>
+                        <Text style={[styles.handle, { color: theme.textSecondary }]}>{user.handle}</Text>
+                        <Text style={[styles.moodStat, { color: colors.calm }]}>
+                            Dominant: {mostCommonMood.toUpperCase()}
+                        </Text>
                     </View>
                 </View>
 
+                {user.bio && (
+                    <Text style={[styles.bio, { color: theme.text }]}>{user.bio}</Text>
+                )}
+
+                <View style={styles.actionsRow}>
+                    <TouchableOpacity
+                        style={[styles.smallButton, { borderColor: theme.border }]}
+                        onPress={() => router.push('/profile/edit')}
+                    >
+                        <Text style={[styles.smallButtonText, { color: theme.text }]}>Edit Profile</Text>
+                    </TouchableOpacity>
+                </View>
+
+                <Divider />
+
                 {/* Stats */}
-                <View style={styles.statsContainer}>
-                    <View style={styles.statItem}>
+                <View style={styles.statsRow}>
+                    <View style={styles.stat}>
                         <Text style={[styles.statValue, { color: theme.text }]}>{postCount}</Text>
                         <Text style={[styles.statLabel, { color: theme.textSecondary }]}>Posts</Text>
                     </View>
-                    <View style={[styles.divider, { backgroundColor: theme.border }]} />
-                    <View style={styles.statItem}>
+                    <View style={styles.stat}>
                         <Text style={[styles.statValue, { color: theme.text }]}>{connectionCount}</Text>
                         <Text style={[styles.statLabel, { color: theme.textSecondary }]}>Connections</Text>
                     </View>
-                    <View style={[styles.divider, { backgroundColor: theme.border }]} />
-                    <View style={styles.statItem}>
+                    <View style={styles.stat}>
                         <Text style={[styles.statValue, { color: theme.text }]}>{moodLogs.length}</Text>
                         <Text style={[styles.statLabel, { color: theme.textSecondary }]}>Check-ins</Text>
                     </View>
                 </View>
 
-                {/* Connections (Kindred Spirits) */}
-                <View style={{ marginBottom: 25 }}>
-                    <Text style={[styles.sectionTitle, { color: theme.text, marginBottom: 10 }]}>Kindred Spirits</Text>
-                    {kindredSpirits.length > 0 ? (
-                        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 20, gap: 15 }}>
-                            {kindredSpirits.map((spirit) => (
-                                <View key={spirit.id} style={{ alignItems: 'center', gap: 5 }}>
-                                    <View style={{ padding: 2, borderRadius: 24, borderWidth: 1, borderColor: moodColor.primary }}>
-                                        <Avatar
-                                            uri={spirit.avatarUrl}
-                                            name={spirit.displayName || spirit.username}
-                                            size={44}
-                                        />
-                                    </View>
-                                    <Text style={{ fontSize: 10, color: theme.textSecondary }}>{spirit.username}</Text>
-                                </View>
-                            ))}
-                        </ScrollView>
-                    ) : (
-                        <View style={{ paddingHorizontal: 20 }}>
-                            <Text style={{ color: theme.textSecondary, fontSize: 13, fontStyle: 'italic' }}>Share more moods to find people with similar vibrations.</Text>
-                        </View>
-                    )}
-                </View>
+                <Divider />
 
-                {/* Emotional ID Card (V2 Feature) */}
-                <View style={[styles.idCard, { backgroundColor: theme.card }]}>
-                    <View style={styles.idHeader}>
-                        <Zap size={20} color={theme.text} />
-                        <Text style={[styles.idTitle, { color: theme.text }]}>Emotional Rhythm</Text>
-                    </View>
-                    <Text style={{ color: theme.textSecondary, marginBottom: 10 }}>You tend to feel energetic in the mornings.</Text>
-                    <View style={styles.rhythmVisual}>
-                        <View style={[styles.bar, { height: 20, backgroundColor: theme.border }]} />
-                        <View style={[styles.bar, { height: 40, backgroundColor: MOOD_COLORS.happy.primary }]} />
-                        <View style={[styles.bar, { height: 30, backgroundColor: MOOD_COLORS.calm.primary }]} />
-                        <View style={[styles.bar, { height: 15, backgroundColor: theme.border }]} />
-                    </View>
+                {/* Feed */}
+                <Text style={[styles.sectionHeader, { color: theme.text }]}>Your Journey</Text>
+                <View style={styles.feed}>
+                    {userPosts.map(post => (
+                        <PostCard key={post.id} post={post} user={user} flat />
+                    ))}
                 </View>
-
-                <Text style={[styles.sectionTitle, { color: theme.text }]}>Your Journey</Text>
-                {userPosts.map(post => (
-                    <PostCard key={post.id} post={post} user={user} />
-                ))}
 
             </ScrollView>
         </SafeAreaView>
@@ -215,150 +187,115 @@ const styles = StyleSheet.create({
     container: {
         flex: 1,
     },
-    content: {
-        paddingBottom: 100,
-    },
     header: {
         flexDirection: 'row',
         justifyContent: 'space-between',
         alignItems: 'center',
-        padding: 20,
+        paddingHorizontal: spacing.m,
+        paddingVertical: spacing.s,
+        borderBottomWidth: StyleSheet.hairlineWidth,
+        borderBottomColor: colors.divider,
     },
-    title: {
-        fontSize: 24,
-        fontWeight: 'bold',
+    screenTitle: {
+        fontSize: 18,
+        fontWeight: typography.semibold as any,
+        letterSpacing: 0.5,
     },
-    profileSection: {
+    content: {
+        paddingBottom: 40,
+    },
+    profileHeader: {
+        flexDirection: 'row',
+        padding: spacing.m,
         alignItems: 'center',
-        marginBottom: 20,
     },
-    avatarContainer: {
-        width: 100,
-        height: 100,
+    avatarWrapper: {
+        position: 'relative',
+        marginRight: spacing.m,
+    },
+    profileInfo: {
+        flex: 1,
         justifyContent: 'center',
-        alignItems: 'center',
-        marginBottom: 10,
-    },
-    avatarAura: {
-        position: 'absolute',
-        width: 110,
-        height: 110,
-        borderRadius: 55,
-        opacity: 0.6,
-    },
-    avatar: {
-        width: 96,
-        height: 96,
-        borderRadius: 48,
-        borderWidth: 3,
-        borderColor: '#FFF',
     },
     name: {
-        fontSize: 22,
-        fontWeight: 'bold',
+        fontSize: 20,
+        fontWeight: typography.semibold as any,
+        marginBottom: 2,
     },
     handle: {
         fontSize: 14,
-        marginBottom: 10,
+        marginBottom: 4,
     },
-    moodBadge: {
-        paddingHorizontal: 12,
-        paddingVertical: 6,
-        borderRadius: 20,
-    },
-    moodBadgeText: {
-        fontWeight: '600',
+    moodStat: {
         fontSize: 12,
-        textTransform: 'capitalize',
+        fontWeight: typography.semibold as any,
+        letterSpacing: 0.5,
     },
-    statsContainer: {
+    bio: {
+        paddingHorizontal: spacing.m,
+        paddingBottom: spacing.m,
+        fontSize: 14,
+        lineHeight: 20,
+    },
+    actionsRow: {
         flexDirection: 'row',
-        justifyContent: 'space-around',
-        alignItems: 'center',
-        marginHorizontal: 20,
-        marginBottom: 25,
+        paddingHorizontal: spacing.m,
+        paddingBottom: spacing.m,
+        gap: 10,
     },
-    statItem: {
+    smallButton: {
+        paddingHorizontal: 16,
+        paddingVertical: 6,
+        borderWidth: 1,
+        borderRadius: 4,
+        alignSelf: 'flex-start',
+    },
+    smallButtonText: {
+        fontSize: 12,
+        fontWeight: typography.medium as any,
+    },
+    statsRow: {
+        flexDirection: 'row',
+        paddingVertical: spacing.m,
+    },
+    stat: {
+        flex: 1,
         alignItems: 'center',
     },
     statValue: {
         fontSize: 18,
-        fontWeight: 'bold',
+        fontWeight: typography.semibold as any,
     },
     statLabel: {
-        fontSize: 12,
+        fontSize: 11,
+        textTransform: 'uppercase',
+        letterSpacing: 0.5,
+        marginTop: 2,
     },
-    divider: {
-        width: 1,
-        height: 30,
-    },
-    idCard: {
-        marginHorizontal: 20,
-        padding: 20,
-        borderRadius: 20,
-        marginBottom: 30,
-    },
-    idHeader: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        gap: 10,
-        marginBottom: 10,
-    },
-    idTitle: {
-        fontWeight: 'bold',
+    sectionHeader: {
         fontSize: 16,
+        fontWeight: typography.semibold as any,
+        padding: spacing.m,
+        paddingBottom: spacing.s,
     },
-    rhythmVisual: {
-        flexDirection: 'row',
-        alignItems: 'flex-end',
-        height: 50,
-        gap: 5,
+    feed: {
+        // No extra padding
     },
-    bar: {
-        flex: 1,
-        borderRadius: 4,
-    },
-    sectionTitle: {
-        fontSize: 18,
-        fontWeight: 'bold',
-        marginLeft: 20,
-        marginBottom: 15,
-    },
-    cameraIconOverlay: {
+    editIcon: {
         position: 'absolute',
-        bottom: 5,
-        right: 5,
-        width: 36,
-        height: 36,
-        borderRadius: 18,
-        justifyContent: 'center',
-        alignItems: 'center',
-        borderWidth: 3,
-        borderColor: '#FFF',
+        bottom: 0,
+        right: 0,
+        backgroundColor: colors.textPrimary,
+        padding: 4,
+        borderRadius: 12,
+        borderWidth: 2,
+        borderColor: colors.background,
     },
-    uploadingOverlay: {
+    uploadOverlay: {
         ...StyleSheet.absoluteFillObject,
         backgroundColor: 'rgba(0,0,0,0.5)',
-        borderRadius: 48,
+        borderRadius: 40,
         justifyContent: 'center',
         alignItems: 'center',
-    },
-    bio: {
-        fontSize: 14,
-        textAlign: 'center',
-        marginHorizontal: 40,
-        marginBottom: 16,
-        lineHeight: 20,
-    },
-    editButton: {
-        paddingHorizontal: 16,
-        paddingVertical: 8,
-        borderRadius: 20,
-        borderWidth: 1,
-        marginBottom: 16,
-    },
-    editButtonText: {
-        fontSize: 14,
-        fontWeight: '600',
     }
 });

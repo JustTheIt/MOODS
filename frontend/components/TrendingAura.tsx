@@ -1,18 +1,15 @@
-import { useColorScheme } from '@/components/useColorScheme';
-import { MOOD_COLORS, MoodType, THEME } from '@/constants/theme';
-import { LinearGradient } from 'expo-linear-gradient';
-import React, { useEffect } from 'react';
-import { Dimensions, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
-import Animated, { useAnimatedStyle, useSharedValue, withRepeat, withSequence, withTiming } from 'react-native-reanimated';
 
-const { width } = Dimensions.get('window');
+import { MOOD_COLORS, MoodType } from '@/constants/theme';
+import { LinearGradient } from 'expo-linear-gradient';
+import React from 'react';
+import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 
 const BUBBLES = [
-    { mood: 'happy', size: 110, top: 30, left: 20, delay: 0 },
-    { mood: 'calm', size: 120, top: 50, left: 205, delay: 500 },
-    { mood: 'anxious', size: 95, top: 125, left: 125, delay: 1000 },
-    { mood: 'sad', size: 85, top: 200, left: 45, delay: 1500 },
-    { mood: 'love', size: 95, top: 215, left: 220, delay: 2000 },
+    { mood: 'happy', size: 110, top: 30, left: 20 },
+    { mood: 'calm', size: 120, top: 50, left: 205 },
+    { mood: 'anxious', size: 95, top: 125, left: 125 },
+    { mood: 'sad', size: 85, top: 200, left: 45 },
+    { mood: 'love', size: 95, top: 215, left: 220 },
 ];
 
 interface TrendingAuraProps {
@@ -20,34 +17,7 @@ interface TrendingAuraProps {
     activeMood?: MoodType | null;
 }
 
-function PulseBubble({ bubble, onMoodPress, activeMood, theme }: { bubble: any, onMoodPress: any, activeMood: any, theme: any }) {
-    const scale = useSharedValue(1);
-    const opacity = useSharedValue(0.8);
-
-    useEffect(() => {
-        scale.value = withRepeat(
-            withSequence(
-                withTiming(1.05, { duration: 2000 + bubble.delay / 5 }),
-                withTiming(1, { duration: 2000 + bubble.delay / 5 })
-            ),
-            -1,
-            true
-        );
-        opacity.value = withRepeat(
-            withSequence(
-                withTiming(1, { duration: 1500 }),
-                withTiming(0.7, { duration: 1500 })
-            ),
-            -1,
-            true
-        );
-    }, []);
-
-    const animatedStyle = useAnimatedStyle(() => ({
-        transform: [{ scale: scale.value }],
-        opacity: opacity.value
-    }));
-
+function StaticBubble({ bubble, onMoodPress, activeMood }: { bubble: any, onMoodPress: any, activeMood: any }) {
     const color = MOOD_COLORS[bubble.mood as MoodType] || MOOD_COLORS.happy;
     const isActive = activeMood === bubble.mood;
 
@@ -63,7 +33,7 @@ function PulseBubble({ bubble, onMoodPress, activeMood, theme }: { bubble: any, 
                 zIndex: isActive ? 10 : 1,
             }}
         >
-            <Animated.View style={[StyleSheet.absoluteFill, animatedStyle]}>
+            <View style={StyleSheet.absoluteFill}>
                 <LinearGradient
                     colors={color.gradient}
                     style={{
@@ -72,39 +42,35 @@ function PulseBubble({ bubble, onMoodPress, activeMood, theme }: { bubble: any, 
                         borderRadius: bubble.size / 2,
                         justifyContent: 'center',
                         alignItems: 'center',
-                        shadowColor: color.primary,
-                        shadowOffset: { width: 0, height: 4 },
-                        shadowOpacity: 0.3,
-                        shadowRadius: 10,
-                        elevation: 8,
                         borderWidth: isActive ? 3 : 0,
                         borderColor: '#fff',
+                        opacity: 0.9,
                     }}
                 >
                     <Text style={{ color: '#fff', fontWeight: 'bold', fontSize: bubble.size * 0.15 }}>
                         {bubble.mood.charAt(0).toUpperCase() + bubble.mood.slice(1)}
                     </Text>
                 </LinearGradient>
-            </Animated.View>
+            </View>
         </TouchableOpacity>
     );
 }
 
+import { useTheme } from '@/hooks/useTheme';
+
 export default function TrendingAura({ onMoodPress, activeMood }: TrendingAuraProps) {
-    const colorScheme = useColorScheme();
-    const theme = colorScheme === 'dark' ? THEME.dark : THEME.light;
+    const theme = useTheme();
 
     return (
         <View style={styles.container}>
             <Text style={[styles.title, { color: theme.text }]}>Community Aura</Text>
-            <View style={[styles.auraBox, { backgroundColor: '#0A0E1A', borderColor: 'rgba(255,255,255,0.05)', borderWidth: 1 }]}>
+            <View style={[styles.auraBox, { backgroundColor: theme.card, borderColor: theme.border, borderWidth: 1 }]}>
                 {BUBBLES.map((b, i) => (
-                    <PulseBubble
+                    <StaticBubble
                         key={i}
                         bubble={b}
                         onMoodPress={onMoodPress}
                         activeMood={activeMood}
-                        theme={theme}
                     />
                 ))}
             </View>

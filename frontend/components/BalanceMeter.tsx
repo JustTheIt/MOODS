@@ -1,9 +1,9 @@
 import { useColorScheme } from '@/components/useColorScheme';
 import { THEME } from '@/constants/theme';
 import * as Haptics from 'expo-haptics';
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
-import Animated, { Easing, useAnimatedStyle, useSharedValue, withRepeat, withSequence, withTiming } from 'react-native-reanimated';
+
 import { Circle, G, Svg } from 'react-native-svg';
 
 interface BalanceMeterProps {
@@ -26,22 +26,7 @@ export default function BalanceMeter({ score }: BalanceMeterProps) {
     const isBalanced = score >= 40 && score <= 60;
     const color = isBalanced ? '#20B2AA' : score > 60 ? '#FFD700' : '#4682B4'; // Green, Gold (High), Blue (Low)
 
-    // Breathing Animation
-    const scale = useSharedValue(1);
-    useEffect(() => {
-        scale.value = withRepeat(
-            withSequence(
-                withTiming(1.03, { duration: 3000, easing: Easing.inOut(Easing.ease) }),
-                withTiming(1, { duration: 3000, easing: Easing.inOut(Easing.ease) })
-            ),
-            -1,
-            true
-        );
-    }, []);
 
-    const animatedStyle = useAnimatedStyle(() => ({
-        transform: [{ scale: showInfo ? 1 : scale.value }] // Stop breathing when interacting
-    }));
 
     const handlePress = () => {
         Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
@@ -75,7 +60,7 @@ export default function BalanceMeter({ score }: BalanceMeterProps) {
                     </View>
                 ) : (
                     <View style={styles.meterWrapper}>
-                        <Animated.View style={animatedStyle}>
+                        <View>
                             <Svg height={140} width={140} viewBox="0 0 140 140">
                                 <G rotation="-180" origin="70, 70">
                                     {/* Background Arc */}
@@ -103,7 +88,7 @@ export default function BalanceMeter({ score }: BalanceMeterProps) {
                                     />
                                 </G>
                             </Svg>
-                        </Animated.View>
+                        </View>
                         <View style={styles.scoreOverlay}>
                             <Text style={[styles.score, { color: theme.text }]}>{score}</Text>
                             <Text style={[styles.label, { color: theme.textSecondary }]}>

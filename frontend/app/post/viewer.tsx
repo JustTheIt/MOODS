@@ -4,7 +4,6 @@ import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useVideoPlayer, VideoView } from 'expo-video';
 import { Share2, X } from 'lucide-react-native';
 import { Dimensions, Share, StyleSheet, TouchableOpacity, View } from 'react-native';
-import Animated, { FadeIn, FadeOut } from 'react-native-reanimated';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
@@ -47,9 +46,7 @@ export default function MediaViewerScreen() {
                 </View>
 
                 {/* Media Content */}
-                <Animated.View
-                    entering={FadeIn.duration(300)}
-                    exiting={FadeOut.duration(200)}
+                <View
                     style={styles.mediaContainer}
                 >
                     {isVideo ? (
@@ -68,7 +65,7 @@ export default function MediaViewerScreen() {
                             transition={300}
                         />
                     )}
-                </Animated.View>
+                </View>
 
                 {/* Footer Info (Optional) */}
                 <View style={styles.footer}>

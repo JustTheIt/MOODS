@@ -1,0 +1,39 @@
+{
+    "project_info": {
+        "project_number": "983642109332",
+        "project_id": "moods-acc28",
+        "storage_bucket": "moods-acc28.firebasestorage.app"
+    },
+    "client": [
+        {
+            "client_info": {
+                "mobilesdk_app_id": "1:983642109332:android:9619738d36c44a70444b81",
+                "android_client_info": {
+                    "package_name": "com.moods.app"
+                }
+            },
+            "oauth_client": [
+                {
+                    "client_id": "983642109332-krl8k4nkat1fspf610n614frc1f1ippk.apps.googleusercontent.com",
+                    "client_type": 3
+                }
+            ],
+            "api_key": [
+                {
+                    "current_key": "AIzaSyDxmzqQIFl76ssBUXh3rg7rERLMfNXzzis"
+                }
+            ],
+            "services": {
+                "appinvite_service": {
+                    "other_platform_oauth_client": [
+                        {
+                            "client_id": "983642109332-krl8k4nkat1fspf610n614frc1f1ippk.apps.googleusercontent.com",
+                            "client_type": 3
+                        }
+                    ]
+                }
+            }
+        }
+    ],
+    "configuration_version": "1"
+}

@@ -1,11 +1,13 @@
+
 import MoodFilterBar from '@/components/MoodFilterBar';
 import PostCard from '@/components/PostCard';
-import { useColorScheme } from '@/components/useColorScheme';
-import { MoodType, THEME } from '@/constants/theme';
+import { MoodType } from '@/constants/theme';
 import { useAuth } from '@/context/AuthContext';
 import { useNotifications } from '@/context/NotificationContext';
+import { useTheme } from '@/hooks/useTheme';
 import { getPosts } from '@/services/postService';
 import { getUserProfile, UserProfile } from '@/services/userService';
+import { spacing } from '@/theme/spacing';
 import { Post as PostType } from '@/types';
 import { router } from 'expo-router';
 import { Bell, Plus } from 'lucide-react-native';
@@ -14,8 +16,7 @@ import { FlatList, RefreshControl, StyleSheet, Text, TouchableOpacity, View } fr
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 export default function HomeScreen() {
-  const colorScheme = useColorScheme();
-  const theme = colorScheme === 'dark' ? THEME.dark : THEME.light;
+  const theme = useTheme(); // Use consistent theme hook
   const [posts, setPosts] = useState<PostType[]>([]);
   const [users, setUsers] = useState<Record<string, UserProfile>>({});
   const [loading, setLoading] = useState(true);
@@ -74,106 +75,110 @@ export default function HomeScreen() {
   };
 
   return (
-    <SafeAreaView style={[styles.container, { backgroundColor: theme.background }]} edges={['top']}>
-      <View style={styles.header}>
-        <Text style={[styles.title, { color: theme.text }]}>MOODS</Text>
-        <View style={styles.headerRight}>
-          <TouchableOpacity
-            onPress={() => router.push('/notifications')}
-            style={styles.iconButton}
-          >
-            <Bell size={24} color={theme.text} />
-            {unreadCount > 0 && (
-              <View style={[styles.badge, { backgroundColor: '#FF6B6B' }]}>
-                <Text style={styles.badgeText}>
-                  {unreadCount > 9 ? '9+' : unreadCount}
-                </Text>
-              </View>
-            )}
-          </TouchableOpacity>
+    <View style={{ flex: 1, backgroundColor: theme.background }}>
+      {/* 2. Safe Area Handling (TOP ONLY) */}
+      <SafeAreaView edges={['top']} style={{ backgroundColor: theme.background }}>
+        <View style={[styles.header, { borderBottomColor: theme.border }]}>
+          <Text style={[styles.title, { color: theme.text }]}>MOODS</Text>
+          <View style={styles.headerRight}>
+            <TouchableOpacity
+              onPress={() => router.push('/notifications')}
+              style={styles.iconButton}
+            >
+              <Bell size={24} color={theme.text} />
+              {unreadCount > 0 && (
+                <View style={[styles.badge, { backgroundColor: theme.error }]}>
+                  <Text style={styles.badgeText}>
+                    {unreadCount > 9 ? '9+' : unreadCount}
+                  </Text>
+                </View>
+              )}
+            </TouchableOpacity>
 
-          <TouchableOpacity
-            onPress={() => router.push('/post/new')}
-            style={styles.iconButton}
-          >
-            <Plus size={24} color={theme.text} />
-          </TouchableOpacity>
+            <TouchableOpacity
+              onPress={() => router.push('/post/new')}
+              style={styles.iconButton}
+            >
+              <Plus size={24} color={theme.text} />
+            </TouchableOpacity>
+          </View>
         </View>
-      </View>
+        {/* 3. Visual Separation - Static Divider handled by borderBottomWidth above */}
+      </SafeAreaView>
 
-      <View style={styles.filters}>
-        <MoodFilterBar
-          selectedMoods={selectedMoods}
-          onToggleMood={toggleMood}
-          onClear={() => setSelectedMoods([])}
+      <View style={{ flex: 1 }}>
+        <View style={styles.filters}>
+          <MoodFilterBar
+            selectedMoods={selectedMoods}
+            onToggleMood={toggleMood}
+            onClear={() => setSelectedMoods([])}
+          />
+        </View>
+
+        <FlatList
+          data={filteredPosts}
+          keyExtractor={(item) => item.id}
+          renderItem={({ item }) => {
+            const postUser = users[item.userId];
+            const displayUser = postUser ? {
+              id: item.userId,
+              username: postUser.username,
+              name: postUser.username,
+              handle: postUser.isAnonymous ? 'Anonymous' : '@' + postUser.username,
+              avatar: postUser.avatarUrl || 'https://via.placeholder.com/150',
+              avatarUrl: postUser.avatarUrl || 'https://via.placeholder.com/150',
+              moodAura: postUser.themeColor
+            } : {
+              id: item.userId,
+              username: 'Loading...',
+              name: 'Loading...',
+              handle: '',
+              avatar: 'https://via.placeholder.com/150',
+              avatarUrl: 'https://via.placeholder.com/150',
+              moodAura: '#ccc'
+            };
+
+            return (
+              <PostCard post={item} user={displayUser as any} />
+            );
+          }}
+          contentContainerStyle={styles.listContent}
+          refreshControl={
+            <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={theme.text} />
+          }
+          ListEmptyComponent={
+            <View style={{ alignItems: 'center', marginTop: 50 }}>
+              <Text style={{ color: theme.textSecondary }}>
+                {authLoading || loading ? 'Fetching moods...' : 'No moods found matching this filter.'}
+              </Text>
+            </View>
+          }
         />
       </View>
-
-      <FlatList
-        data={filteredPosts}
-        keyExtractor={(item) => item.id}
-        renderItem={({ item }) => {
-          const postUser = users[item.userId];
-          const displayUser = postUser ? {
-            id: item.userId,
-            username: postUser.username,
-            name: postUser.username,
-            handle: postUser.isAnonymous ? 'Anonymous' : '@' + postUser.username,
-            avatar: postUser.avatarUrl || 'https://via.placeholder.com/150',
-            avatarUrl: postUser.avatarUrl || 'https://via.placeholder.com/150',
-            moodAura: postUser.themeColor
-          } : {
-            id: item.userId,
-            username: 'Loading...',
-            name: 'Loading...',
-            handle: '',
-            avatar: 'https://via.placeholder.com/150',
-            avatarUrl: 'https://via.placeholder.com/150',
-            moodAura: '#ccc'
-          };
-
-          return (
-            <PostCard post={item} user={displayUser as any} />
-          );
-        }}
-        contentContainerStyle={styles.listContent}
-        refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={theme.text} />
-        }
-        ListEmptyComponent={
-          <View style={{ alignItems: 'center', marginTop: 50 }}>
-            <Text style={{ color: theme.textSecondary }}>
-              {authLoading || loading ? 'Fetching moods...' : 'No moods found matching this filter.'}
-            </Text>
-          </View>
-        }
-      />
-    </SafeAreaView>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-  },
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingHorizontal: 20,
-    paddingVertical: 10,
-    marginBottom: 5,
+    paddingHorizontal: spacing.m,
+    paddingVertical: spacing.s,
+    borderBottomWidth: 1, // Static divider
   },
   title: {
-    fontSize: 24,
+    fontSize: 20,
     fontWeight: '800',
-    letterSpacing: -0.5,
+    letterSpacing: 1,
   },
   filters: {
-    paddingBottom: 5,
+    paddingVertical: spacing.s,
   },
   listContent: {
     paddingBottom: 100,
+    paddingHorizontal: 0,
   },
   headerRight: {
     flexDirection: 'row',
@@ -182,7 +187,6 @@ const styles = StyleSheet.create({
   iconButton: {
     padding: 8,
     marginLeft: 8,
-    position: 'relative',
   },
   badge: {
     position: 'absolute',
@@ -194,8 +198,6 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     paddingHorizontal: 4,
-    borderWidth: 1.5,
-    borderColor: 'transparent',
   },
   badgeText: {
     color: 'white',

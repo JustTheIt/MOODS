@@ -1,19 +1,18 @@
-import { useColorScheme } from '@/components/useColorScheme';
-import { MOOD_COLORS, MoodType, THEME } from '@/constants/theme';
-import { useMood } from '@/context/MoodContext';
+
+import { Avatar } from '@/components/Avatar';
+import { useTheme } from '@/hooks/useTheme'; // Dynamic Theme Hook
 import { auth } from '@/lib/auth';
 import { checkPostLiked, deletePost, repostPost, toggleLikePost } from '@/services/postService';
+import { spacing } from '@/theme/spacing';
+import { typography } from '@/theme/typography';
 import { Post, User } from '@/types';
 import { formatRelativeTime } from '@/utils/time.utils';
 import { Image } from 'expo-image';
-import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
 import { useVideoPlayer, VideoView } from 'expo-video';
 import { Heart, MessageCircle, Repeat, Share2, Trash } from 'lucide-react-native';
 import { useEffect, useState } from 'react';
 import { Alert, Pressable, Share, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
-import Animated, { Easing, useAnimatedStyle, useSharedValue, withRepeat, withSequence, withSpring, withTiming } from 'react-native-reanimated';
-import { Avatar } from './Avatar';
 
 interface PostCardProps {
     post: Post;
@@ -38,23 +37,16 @@ function VideoPlayer({ uri }: { uri: string }) {
     );
 }
 
-export default function PostCard({ post, user, flat = false }: PostCardProps) {
-    const colorScheme = useColorScheme();
-    const theme = colorScheme === 'dark' ? THEME.dark : THEME.light;
+export default function PostCard({ post, user, flat }: PostCardProps) {
+    const theme = useTheme(); // Use dynamic theme
     const router = useRouter();
-    const moodColors = MOOD_COLORS[post.mood as MoodType] || MOOD_COLORS.happy;
-    const { settings } = useMood();
     const currentUser = auth.currentUser;
-    const isDark = colorScheme === 'dark';
+    const isOwner = currentUser?.uid === post.userId;
 
     // State for interactions
     const [liked, setLiked] = useState(post.isLiked || false);
     const [likesCount, setLikesCount] = useState(post.likesCount || 0);
     const [repostsCount, setRepostsCount] = useState(post.repostsCount || 0);
-    const scale = useSharedValue(1);
-
-    // Animation for intensity glow
-    const glowOpacity = useSharedValue(0.3);
 
     useEffect(() => {
         if (currentUser && post.isLiked === undefined) {
@@ -63,32 +55,6 @@ export default function PostCard({ post, user, flat = false }: PostCardProps) {
             setLiked(post.isLiked);
         }
     }, [post.id, post.isLiked, currentUser]);
-
-    useEffect(() => {
-        if (settings.reduceMotion) {
-            glowOpacity.value = 0.3;
-            return;
-        }
-
-        if (post.intensity && post.intensity > 0.6) {
-            glowOpacity.value = withRepeat(
-                withSequence(
-                    withTiming(0.6, { duration: 1500, easing: Easing.inOut(Easing.ease) }),
-                    withTiming(0.3, { duration: 1500, easing: Easing.inOut(Easing.ease) })
-                ),
-                -1,
-                true
-            );
-        }
-    }, [post.intensity, settings.reduceMotion]);
-
-    const animatedGlowStyle = useAnimatedStyle(() => ({
-        opacity: glowOpacity.value
-    }));
-
-    const animatedHeartStyle = useAnimatedStyle(() => ({
-        transform: [{ scale: scale.value }]
-    }));
 
     const handleLike = async () => {
         if (!currentUser) {
@@ -101,13 +67,6 @@ export default function PostCard({ post, user, flat = false }: PostCardProps) {
 
         setLiked(newLiked);
         setLikesCount(newCount);
-
-        if (newLiked) {
-            scale.value = withSequence(
-                withSpring(1.2),
-                withSpring(1)
-            );
-        }
 
         try {
             await toggleLikePost(post.id, currentUser.uid);
@@ -164,8 +123,6 @@ export default function PostCard({ post, user, flat = false }: PostCardProps) {
         ]);
     };
 
-    const isOwner = currentUser?.uid === post.userId;
-
     const navigateToViewer = (uri: string, type: 'image' | 'video', aspectRatio?: number) => {
         router.push({
             pathname: '/post/viewer',
@@ -188,7 +145,7 @@ export default function PostCard({ post, user, flat = false }: PostCardProps) {
                         source={{ uri }}
                         style={styles.postMedia}
                         contentFit="cover"
-                        transition={300}
+                        transition={0} // No transition
                         cachePolicy="memory-disk"
                     />
                 )}
@@ -199,21 +156,9 @@ export default function PostCard({ post, user, flat = false }: PostCardProps) {
     return (
         <View style={[
             styles.card,
-            { backgroundColor: moodColors.secondary },
-            flat && { marginHorizontal: 0, marginBottom: 0, elevation: 0, shadowOpacity: 0, borderRadius: 0 }
+            { backgroundColor: theme.card, borderBottomColor: theme.divider },
+            flat && { marginBottom: 0, borderBottomWidth: 1 }
         ]}>
-            {/* Intensity Aura */}
-            {settings.glowIntensity && (
-                <Animated.View style={[StyleSheet.absoluteFill, animatedGlowStyle]}>
-                    <LinearGradient
-                        colors={[moodColors.glow, 'transparent']}
-                        style={StyleSheet.absoluteFill}
-                        start={{ x: 0.5, y: 0.5 }}
-                        end={{ x: 1, y: 1 }}
-                    />
-                </Animated.View>
-            )}
-
             {/* Header */}
             <View style={styles.header}>
                 <TouchableOpacity
@@ -231,43 +176,39 @@ export default function PostCard({ post, user, flat = false }: PostCardProps) {
                         onPress={() => !post.anonymous && router.push(`/profile/${user.id}` as any)}
                         disabled={post.anonymous}
                     >
-                        <Text style={[styles.name, { color: moodColors.text }]}>
+                        <Text style={[styles.name, { color: theme.textPrimary }]}>
                             {post.anonymous ? 'Anonymous Soul' : (user.username || user.name)}
                         </Text>
                     </TouchableOpacity>
-                    <Text style={[styles.handle, { color: moodColors.text, opacity: 0.5 }]}>
-                        {post.anonymous ? 'vibrating...' : (user.handle || ('@' + user.username))} • {formatRelativeTime(post.timestamp)}
+                    <Text style={[styles.handle, { color: theme.textSecondary }]}>
+                        {post.anonymous ? '@anonymous' : (user.handle || ('@' + user.username))} • {formatRelativeTime(post.timestamp)}
                         {post.originalPostId && <Text style={{ fontWeight: '600' }}> • Reposted</Text>}
                     </Text>
                 </View>
                 {isOwner && (
                     <TouchableOpacity onPress={handleDelete}>
-                        <Trash size={18} color={moodColors.text} style={{ opacity: 0.6 }} />
+                        <Trash size={18} color={theme.textSecondary} />
                     </TouchableOpacity>
                 )}
             </View>
 
             {/* Content */}
             <View style={styles.content}>
-                <View style={[styles.moodChip, { backgroundColor: isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.05)' }]}>
-                    {post.intensity && (
-                        <View style={[styles.intensityDot, {
-                            backgroundColor: post.intensity > 0.7 ? '#FF4500' : post.intensity > 0.4 ? '#FFD700' : '#87CEEB',
-                            opacity: 0.8
-                        }]} />
-                    )}
-                    <Text style={[styles.moodText, { color: moodColors.text }]}>
-                        {post.mood.charAt(0).toUpperCase() + post.mood.slice(1)}
-                    </Text>
-                </View>
+                {post.mood && (
+                    <View style={[styles.moodLabel, { borderLeftColor: theme.calm }]}>
+                        <Text style={[styles.moodText, { color: theme.textSecondary }]}>
+                            {post.mood.toUpperCase()}
+                        </Text>
+                    </View>
+                )}
 
                 {post.content ? (
-                    <Text style={[styles.postText, { color: moodColors.text }]}>{post.content}</Text>
+                    <Text style={[styles.postText, { color: theme.textPrimary }]}>{post.content}</Text>
                 ) : null}
 
                 {/* Media Section */}
                 {post.originalPost ? (
-                    <View style={[styles.repostContainer, { borderColor: moodColors.text + '20', backgroundColor: 'rgba(255,255,255,0.5)' }]}>
+                    <View style={[styles.repostContainer, { backgroundColor: theme.background }]}>
                         <View style={styles.repostHeader}>
                             <Avatar
                                 uri={post.originalAuthor?.avatarUrl}
@@ -275,11 +216,11 @@ export default function PostCard({ post, user, flat = false }: PostCardProps) {
                                 size={24}
                                 style={{ marginRight: 8 }}
                             />
-                            <Text style={[styles.repostAuthor, { color: moodColors.text }]}>
+                            <Text style={[styles.repostAuthor, { color: theme.textPrimary }]}>
                                 {post.originalAuthor?.username || 'Unknown User'}
                             </Text>
                         </View>
-                        <Text style={[styles.postText, { color: moodColors.text }]}>{post.originalPost.content}</Text>
+                        <Text style={[styles.postText, { color: theme.textPrimary }]}>{post.originalPost.content}</Text>
                         {post.originalPost.image && renderMedia(post.originalPost.image, post.originalPost.mediaMetadata)}
                     </View>
                 ) : (
@@ -288,32 +229,30 @@ export default function PostCard({ post, user, flat = false }: PostCardProps) {
             </View>
 
             {/* Footer */}
-            <View style={[styles.footer, { borderTopColor: moodColors.text + '20' }]}>
+            <View style={styles.footer}>
                 <TouchableOpacity style={styles.actionButton} onPress={handleLike}>
-                    <Animated.View style={animatedHeartStyle}>
-                        <Heart size={20} color={liked ? "#ff4040" : moodColors.text} fill={liked ? "#ff4040" : "transparent"} />
-                    </Animated.View>
-                    <Text style={[styles.actionText, { color: liked ? "#ff4040" : moodColors.text }]}>
-                        {likesCount > 0 ? likesCount : 'Like'}
+                    <Heart size={20} color={liked ? theme.error : theme.textSecondary} fill={liked ? theme.error : "transparent"} />
+                    <Text style={[styles.actionText, { color: liked ? theme.error : theme.textSecondary }]}>
+                        {likesCount > 0 ? likesCount : ''}
                     </Text>
                 </TouchableOpacity>
 
                 <TouchableOpacity style={styles.actionButton} onPress={() => router.push(`/post/${post.id}` as any)}>
-                    <MessageCircle size={20} color={moodColors.text} />
-                    <Text style={[styles.actionText, { color: moodColors.text }]}>
-                        {post.commentsCount && post.commentsCount > 0 ? post.commentsCount : 'Comment'}
+                    <MessageCircle size={20} color={theme.textSecondary} />
+                    <Text style={[styles.actionText, { color: theme.textSecondary }]}>
+                        {post.commentsCount && post.commentsCount > 0 ? post.commentsCount : ''}
                     </Text>
                 </TouchableOpacity>
 
                 <TouchableOpacity style={styles.actionButton} onPress={handleRepost}>
-                    <Repeat size={20} color={moodColors.text} />
-                    <Text style={[styles.actionText, { color: moodColors.text }]}>
-                        {repostsCount > 0 ? repostsCount : 'Repost'}
+                    <Repeat size={20} color={theme.textSecondary} />
+                    <Text style={[styles.actionText, { color: theme.textSecondary }]}>
+                        {repostsCount > 0 ? repostsCount : ''}
                     </Text>
                 </TouchableOpacity>
 
                 <TouchableOpacity style={styles.actionButton} onPress={handleShare}>
-                    <Share2 size={20} color={moodColors.text} />
+                    <Share2 size={20} color={theme.textSecondary} />
                 </TouchableOpacity>
             </View>
         </View >
@@ -322,78 +261,63 @@ export default function PostCard({ post, user, flat = false }: PostCardProps) {
 
 const styles = StyleSheet.create({
     card: {
-        borderRadius: 24,
-        marginHorizontal: 12,
-        marginBottom: 16,
-        paddingTop: 4,
-        overflow: 'hidden',
-        // Subtle shadow for depth
+        width: '100%',
+        paddingBottom: spacing.m,
+        marginBottom: 12, // Distinct gap
+        borderBottomWidth: StyleSheet.hairlineWidth,
+        // Optional: Add shadow for depth if 'flat' is not desired, but let's stick to clean separation first
+        elevation: 1,
         shadowColor: '#000',
-        shadowOffset: { width: 0, height: 4 },
+        shadowOffset: { width: 0, height: 1 },
         shadowOpacity: 0.05,
-        shadowRadius: 10,
-        elevation: 3,
+        shadowRadius: 2,
     },
     header: {
         flexDirection: 'row',
         alignItems: 'center',
-        paddingHorizontal: 16,
-        paddingTop: 16,
-        paddingBottom: 12,
+        paddingHorizontal: spacing.m,
+        paddingTop: spacing.m,
+        paddingBottom: spacing.s,
     },
     headerText: {
         flex: 1,
-        marginLeft: 4,
+        marginLeft: spacing.s,
     },
     name: {
-        fontSize: 15,
-        fontWeight: '700',
-        letterSpacing: -0.3,
+        fontSize: 16,
+        fontWeight: typography.medium as any,
+        marginBottom: 2,
     },
     handle: {
-        fontSize: 12,
-        marginTop: 1,
+        fontSize: 14,
     },
     content: {
-        paddingHorizontal: 16,
-        paddingBottom: 16,
+        paddingHorizontal: spacing.m,
+        paddingBottom: spacing.s,
     },
-    moodChip: {
+    moodLabel: {
         alignSelf: 'flex-start',
-        paddingHorizontal: 10,
-        paddingVertical: 5,
-        borderRadius: 14,
-        marginBottom: 12,
-        flexDirection: 'row',
-        alignItems: 'center',
-        gap: 6,
-        borderWidth: 1,
-        borderColor: 'rgba(255,255,255,0.1)',
-    },
-    intensityDot: {
-        width: 8,
-        height: 8,
-        borderRadius: 4,
+        borderLeftWidth: 2,
+        paddingLeft: 8,
+        marginBottom: 8,
     },
     moodText: {
-        fontSize: 11,
-        fontWeight: '800',
-        textTransform: 'uppercase',
-        letterSpacing: 0.5,
+        fontSize: 12,
+        fontWeight: typography.semibold as any,
+        letterSpacing: 1,
     },
     postText: {
         fontSize: 16,
         lineHeight: 24,
-        marginBottom: 14,
-        fontWeight: '400',
+        marginBottom: spacing.m,
     },
     mediaContainer: {
         width: '100%',
-        aspectRatio: 1.2, // More professional landscape look
-        borderRadius: 20,
+        aspectRatio: 16 / 9,
+        borderRadius: 8,
         overflow: 'hidden',
-        marginTop: 4,
-        backgroundColor: 'rgba(0,0,0,0.02)',
+        backgroundColor: 'rgba(0,0,0,0.05)', // Match screen background for placeholders
+        marginTop: spacing.s,
     },
     postMedia: {
         width: '100%',
@@ -401,36 +325,33 @@ const styles = StyleSheet.create({
     },
     footer: {
         flexDirection: 'row',
-        paddingHorizontal: 16,
-        paddingVertical: 14,
-        borderTopWidth: StyleSheet.hairlineWidth,
-        justifyContent: 'space-between',
-        alignItems: 'center',
+        paddingHorizontal: spacing.m,
+        paddingVertical: spacing.s,
+        justifyContent: 'flex-start',
+        gap: 24,
     },
     actionButton: {
         flexDirection: 'row',
         alignItems: 'center',
         gap: 6,
-        paddingVertical: 4,
+        padding: 8,
     },
     actionText: {
-        fontSize: 13,
-        fontWeight: '600',
+        fontSize: 14,
+        fontWeight: '500',
     },
     repostContainer: {
-        marginTop: 4,
-        padding: 14,
-        borderRadius: 16,
-        borderWidth: 1,
+        padding: spacing.m,
+        borderRadius: 8,
+        marginTop: spacing.s,
     },
     repostHeader: {
         flexDirection: 'row',
         alignItems: 'center',
-        marginBottom: 8,
+        marginBottom: spacing.s,
     },
     repostAuthor: {
-        fontWeight: '700',
+        fontWeight: '600',
         fontSize: 14,
-        letterSpacing: -0.2,
-    }
+    },
 });

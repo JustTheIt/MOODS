@@ -1,10 +1,10 @@
 import { useColorScheme } from '@/components/useColorScheme';
-import { MOOD_COLORS, THEME } from '@/constants/theme';
+import { THEME } from '@/constants/theme';
 import { useAuth } from '@/context/AuthContext';
 import { useMood } from '@/context/MoodContext';
 import { useRouter } from 'expo-router';
-import { Activity, LogOut, Moon, X, Zap } from 'lucide-react-native';
-import { StyleSheet, Switch, Text, TouchableOpacity, View } from 'react-native';
+import { LogOut, Moon, X } from 'lucide-react-native';
+import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 export default function SettingsModal() {
@@ -58,34 +58,6 @@ export default function SettingsModal() {
                             </TouchableOpacity>
                         ))}
                     </View>
-                </View>
-
-                <View style={[styles.row, { borderBottomColor: theme.border }]}>
-                    <View style={styles.optionInfo}>
-                        <Zap size={20} color={theme.text} />
-                        <Text style={[styles.optionText, { color: theme.text }]}>Aura Glow</Text>
-                    </View>
-                    <Switch
-                        value={settings.glowIntensity}
-                        onValueChange={() => toggleSetting('glowIntensity')}
-                        trackColor={{ false: theme.border, true: MOOD_COLORS.happy.primary }}
-                    />
-                </View>
-            </View>
-
-            <View style={styles.section}>
-                <Text style={[styles.sectionTitle, { color: theme.textSecondary }]}>Accessibility</Text>
-
-                <View style={[styles.row, { borderBottomColor: theme.border }]}>
-                    <View style={styles.optionInfo}>
-                        <Activity size={20} color={theme.text} />
-                        <Text style={[styles.optionText, { color: theme.text }]}>Reduce Motion</Text>
-                    </View>
-                    <Switch
-                        value={settings.reduceMotion}
-                        onValueChange={() => toggleSetting('reduceMotion')}
-                        trackColor={{ false: theme.border, true: MOOD_COLORS.calm.primary }}
-                    />
                 </View>
             </View>
 

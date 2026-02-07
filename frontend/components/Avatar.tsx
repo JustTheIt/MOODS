@@ -28,7 +28,7 @@ export const Avatar: React.FC<AvatarProps> = ({ uri, name = 'User', size = 40, s
                 source={{ uri: avatarSource }}
                 style={styles.image}
                 contentFit="cover"
-                transition={200}
+                transition={0}
                 cachePolicy="memory-disk"
             />
         </View>

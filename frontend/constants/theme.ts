@@ -53,20 +53,34 @@ export const MOOD_COLORS = {
 export const THEME = {
   primary: '#FF6B6B',
   dark: {
-    background: '#040712', // Darker, slightly more navy
+    background: '#02040A', // Deepest Navy/Black
     card: '#0F172A',       // Rich Slate Surface
-    text: '#FFFFFF',       // Absolute white for headers
-    textSecondary: '#94A3B8', // Muted Slate
-    border: '#1E293B',     // Subtle Slate Border
-    tabBar: '#080C18',     // Deep Navy Tab Bar
+    text: '#F3F4F6',       // Gray 100
+    textPrimary: '#F3F4F6',
+    textSecondary: '#94A3B8', // Slate 400
+    textTertiary: '#64748B',  // Slate 500
+    border: '#1E293B',     // Slate 800
+    divider: '#1E293B',
+    icon: '#94A3B8',
+    tabBar: '#0B1120',     // Darker than card
+    error: '#EF4444',
+    success: '#10B981',
+    calm: '#A8C3A8',
   },
   light: {
-    background: '#FAFAFA',
-    card: '#FFFFFF',
-    text: '#121212',
-    textSecondary: '#666666',
-    border: '#E0E0E0',
+    background: '#F6F6F6', // Light Gray (Requested)
+    card: '#FFFFFF',       // White
+    text: '#111111',       // Requested Dark Gray
+    textPrimary: '#111111',
+    textSecondary: '#6B7280', // Requested Muted Gray
+    textTertiary: '#9CA3AF',
+    border: '#E5E5E5',     // Requested Divider
+    divider: '#E5E5E5',
+    icon: '#4B5563',
     tabBar: '#FFFFFF',
+    error: '#EF4444',
+    success: '#10B981',
+    calm: '#A8C3A8',
   }
 };
 

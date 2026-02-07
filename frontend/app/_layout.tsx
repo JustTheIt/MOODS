@@ -1,3 +1,4 @@
+
 import FontAwesome from '@expo/vector-icons/FontAwesome';
 import { DarkTheme, DefaultTheme, ThemeProvider } from '@react-navigation/native';
 import { useFonts } from 'expo-font';
@@ -5,13 +6,14 @@ import { Stack, useRouter, useSegments } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import { StatusBar } from 'expo-status-bar';
 import { useEffect } from 'react';
-import 'react-native-reanimated';
+
 
 import { useColorScheme } from '@/components/useColorScheme';
 import { VerificationBanner } from '@/components/VerificationBanner';
 import { AuthProvider, useAuth } from '@/context/AuthContext';
 import { MoodProvider, useMood } from '@/context/MoodContext';
 import { NotificationProvider } from '@/context/NotificationContext';
+import { useTheme } from '@/hooks/useTheme';
 import { ActivityIndicator, View } from 'react-native';
 
 export {
@@ -66,14 +68,14 @@ function RootLayoutNav() {
 }
 
 function RootLayoutContent() {
-  const systemScheme = useColorScheme();
+  const theme = useTheme();
+  const colorScheme = useColorScheme();
   const { user: authUser, authLoading } = useAuth();
-  const { user: profileUser, settings } = useMood(); // Custom User type with onboardingCompleted
+  const { user: profileUser } = useMood();
   const segments = useSegments();
   const router = useRouter();
 
-  // effectiveTheme
-  const effectiveTheme = 'dark';
+  const effectiveTheme = colorScheme === 'dark' ? 'dark' : 'light';
 
   useEffect(() => {
     if (authLoading) return;
@@ -82,33 +84,25 @@ function RootLayoutContent() {
     const inOnboardingGroup = segments[0] === '(onboarding)';
 
     if (!authUser && !inAuthGroup) {
-      // 1. Not logged in -> Go to Login
       router.replace('/login');
     } else if (authUser) {
-      // 2. Logged in
-
-      // Check if profile is loaded (if profile ID matches auth ID)
-      // Note: profileUser is initialized as 'guest' in MoodContext
       const isProfileLoaded = profileUser.id === authUser.uid;
 
       if (isProfileLoaded) {
-        const isVerifyScreen = segments.includes('verify-email');
+        const isVerifyScreen = (segments as string[]).includes('verify-email');
 
         if (!profileUser.onboardingCompleted && !inOnboardingGroup && !isVerifyScreen) {
-          // 3. Profile loaded, but onboarding incomplete -> Go to Onboarding
           router.replace('/(onboarding)/welcome');
         } else if (profileUser.onboardingCompleted && (inAuthGroup || inOnboardingGroup) && !isVerifyScreen) {
-          // 4. Onboarding complete, but on auth/onboarding pages -> Go Home
           router.replace('/home');
         }
       }
-      // If profile not loaded yet, wait (do nothing)
     }
   }, [authUser, authLoading, profileUser, segments]);
 
   if (authLoading) {
     return (
-      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: theme.background }}>
         <ActivityIndicator size="large" color="#FF6B6B" />
       </View>
     );
@@ -116,7 +110,11 @@ function RootLayoutContent() {
 
   return (
     <ThemeProvider value={effectiveTheme === 'dark' ? DarkTheme : DefaultTheme}>
-      <StatusBar style={effectiveTheme === 'dark' ? 'light' : 'dark'} />
+      <StatusBar
+        style={effectiveTheme === 'dark' ? 'light' : 'dark'}
+        backgroundColor={effectiveTheme === 'dark' ? '#000000' : '#F6F6F6'}
+        translucent={false}
+      />
       <VerificationBanner />
       <Stack screenOptions={{ headerShown: false }}>
         <Stack.Screen name="(tabs)" />

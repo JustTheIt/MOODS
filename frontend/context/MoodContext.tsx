@@ -153,10 +153,10 @@ export function MoodProvider({ children }: { children: ReactNode }) {
 
     // Settings State
     const [settings, setSettings] = useState<AppSettings>({
-        reduceMotion: false,
-        glowIntensity: true,
+        reduceMotion: false, // Deprecated
+        glowIntensity: false, // Deprecated
         highContrast: false,
-        themeMode: 'dark'
+        themeMode: 'system'
     });
 
     const logMood = async (newLog: MoodLog) => {
