@@ -4,13 +4,14 @@ import admin from 'firebase-admin';
 export class MoodService {
     static async logMood(userId: string, moodData: any) {
         const moodRef = db.collection('moods').doc();
+        const now = Date.now();
         const log = {
             ...moodData,
             userId,
             createdAt: admin.firestore.FieldValue.serverTimestamp(),
         };
         await moodRef.set(log);
-        return { id: moodRef.id, ...log };
+        return { id: moodRef.id, ...log, timestamp: now };
     }
 
     static async getMoodHistory(userId: string) {

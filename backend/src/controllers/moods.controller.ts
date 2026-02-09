@@ -1,8 +1,21 @@
 import { AuthRequest } from '@/middleware/auth.middleware';
 import { MoodService } from '@/services/moods.service';
+import { SentimentService } from '@/services/sentiment.service';
 import { Response } from 'express';
 
 export class MoodController {
+    static async analyzeMood(req: AuthRequest, res: Response) {
+        try {
+            const { text } = req.body;
+            if (!text) return res.status(400).json({ message: 'Text is required' });
+
+            const sentiment = await SentimentService.analyze(text);
+            res.json({ mood: sentiment });
+        } catch (error: any) {
+            res.status(500).json({ message: error.message });
+        }
+    }
+
     static async logMood(req: AuthRequest, res: Response) {
         try {
             const userId = req.user?.uid;

@@ -6,6 +6,7 @@ const router = Router();
 
 router.use(authenticate);
 
+router.post('/analyze', MoodController.analyzeMood);
 router.post('/', MoodController.logMood);
 router.get('/history', MoodController.getHistory);
 router.delete('/:moodId', MoodController.deleteMood);

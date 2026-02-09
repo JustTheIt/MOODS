@@ -74,7 +74,13 @@ export default function MoodChart({ logs }: MoodChartProps) {
                     {displayLogs.map((log, index) => (
                         <View key={log.id} style={{ width: barWidth, marginRight: spacing, alignItems: 'center' }}>
                             <Text style={[styles.dayLabel, { color: theme.textSecondary }]}>
-                                {format(log.timestamp, 'EEEEE')}
+                                {(() => {
+                                    try {
+                                        return format(new Date(log.timestamp), 'EEEEE');
+                                    } catch (e) {
+                                        return '?';
+                                    }
+                                })()}
                             </Text>
                         </View>
                     ))}

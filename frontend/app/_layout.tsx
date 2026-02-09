@@ -71,36 +71,52 @@ function RootLayoutContent() {
   const theme = useTheme();
   const colorScheme = useColorScheme();
   const { user: authUser, authLoading } = useAuth();
-  const { user: profileUser } = useMood();
-  const segments = useSegments();
+  const { user: profileUser, profileLoading } = useMood();
+  const segments = useSegments() as string[];
   const router = useRouter();
 
   const effectiveTheme = colorScheme === 'dark' ? 'dark' : 'light';
 
   useEffect(() => {
-    if (authLoading) return;
+    // Wait for both auth and profile to hydrate
+    if (authLoading || (authUser && profileLoading)) return;
 
     const inAuthGroup = segments[0] === '(auth)';
     const inOnboardingGroup = segments[0] === '(onboarding)';
+    const isRoot = segments.length === 0 || (segments[0] === "" as any);
 
-    if (!authUser && !inAuthGroup) {
-      router.replace('/login');
-    } else if (authUser) {
+    if (!authUser) {
+      // Not logged in: Redirect to login if not already in auth group
+      if (!inAuthGroup) {
+        router.replace('/login');
+      }
+    } else {
+      // Logged in: Check if profile is loaded for this user
       const isProfileLoaded = profileUser.id === authUser.uid;
 
       if (isProfileLoaded) {
         const isVerifyScreen = (segments as string[]).includes('verify-email');
 
-        if (!profileUser.onboardingCompleted && !inOnboardingGroup && !isVerifyScreen) {
-          router.replace('/(onboarding)/welcome');
-        } else if (profileUser.onboardingCompleted && (inAuthGroup || inOnboardingGroup) && !isVerifyScreen) {
-          router.replace('/home');
+        if (!profileUser.onboardingCompleted) {
+          // Onboarding not finished
+          if (!inOnboardingGroup && !isVerifyScreen) {
+            router.replace('/(onboarding)/welcome');
+          }
+        } else {
+          // Fully logged in and onboarded
+          // Redirect to home if at root, in auth, or in onboarding
+          if (inAuthGroup || inOnboardingGroup || isRoot) {
+            if (!isVerifyScreen) {
+              // Use explicit path for reliability
+              router.replace('/(tabs)/home');
+            }
+          }
         }
       }
     }
-  }, [authUser, authLoading, profileUser, segments]);
+  }, [authUser, authLoading, profileUser, profileLoading, segments]);
 
-  if (authLoading) {
+  if (authLoading || (authUser && profileLoading)) {
     return (
       <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: theme.background }}>
         <ActivityIndicator size="large" color="#FF6B6B" />

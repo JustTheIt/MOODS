@@ -9,6 +9,7 @@
         "build": "tsc"
     },
     "dependencies": {
+        "@redis/client": "^5.10.0",
         "cloudinary": "^2.0.0",
         "cors": "^2.8.5",
         "dotenv": "^16.4.5",
@@ -16,13 +17,17 @@
         "express-rate-limit": "^7.1.5",
         "firebase-admin": "^12.0.0",
         "helmet": "^7.1.0",
+        "mongoose": "^9.1.6",
+        "natural": "^8.1.0",
         "nodemailer": "^7.0.12",
+        "redis": "^5.10.0",
         "tsconfig-paths": "^4.2.0",
         "zod": "^3.22.4"
     },
     "devDependencies": {
         "@types/cors": "^2.8.17",
         "@types/express": "^4.17.21",
+        "@types/natural": "^5.1.5",
         "@types/node": "^20.11.24",
         "@types/nodemailer": "^7.0.4",
         "ts-node-dev": "^2.0.0",

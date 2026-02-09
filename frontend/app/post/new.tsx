@@ -2,13 +2,14 @@ import { MOOD_COLORS, MoodType, THEME } from '@/constants/theme';
 import { useAuth } from '@/context/AuthContext';
 import { useRequireVerification } from '@/hooks/useRequireVerification';
 import { createPost } from '@/services/postService';
+import { analyzeMood } from '@/services/sentimentService';
 import * as Haptics from 'expo-haptics';
 import { Image } from 'expo-image';
 import * as ImagePicker from 'expo-image-picker';
 import { useRouter } from 'expo-router';
 import { useVideoPlayer, VideoView } from 'expo-video';
 import { Camera, Video, X } from 'lucide-react-native';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import {
     ActivityIndicator,
     Alert,
@@ -37,6 +38,23 @@ export default function NewPostScreen() {
     const [intensity, setIntensity] = useState(0.5);
     const [media, setMedia] = useState<{ uri: string, type: 'image' | 'video' } | null>(null);
     const [loading, setLoading] = useState(false);
+    const [analyzing, setAnalyzing] = useState(false);
+
+    useEffect(() => {
+        const timer = setTimeout(async () => {
+            if (content.trim().length > 3) {
+                setAnalyzing(true);
+                const mood = await analyzeMood(content);
+                if (mood) {
+                    setSelectedMood(mood);
+                    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+                }
+                setAnalyzing(false);
+            }
+        }, 1000); // Debounce for 1 second
+
+        return () => clearTimeout(timer);
+    }, [content]);
 
     const player = useVideoPlayer(media?.type === 'video' ? media.uri : null, (player) => {
         player.loop = true;
@@ -107,7 +125,10 @@ export default function NewPostScreen() {
             </View>
 
             <ScrollView style={styles.content}>
-                <Text style={[styles.sectionLabel, { color: theme.textSecondary }]}>How are you feeling?</Text>
+                <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingRight: 20 }}>
+                    <Text style={[styles.sectionLabel, { color: theme.textSecondary }]}>How are you feeling?</Text>
+                    {analyzing && <ActivityIndicator size="small" color={theme.textSecondary} />}
+                </View>
                 <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.moodSelector} contentContainerStyle={{ paddingHorizontal: 20 }}>
                     {MOODS.map((mood) => {
                         const isSelected = selectedMood === mood;
