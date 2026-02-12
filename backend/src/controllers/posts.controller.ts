@@ -5,7 +5,7 @@ import { Response } from 'express';
 export class PostController {
     static async createPost(req: AuthRequest, res: Response) {
         try {
-            const { content, mood, intensity, anonymous, imageUrl, originalPostId, mediaMetadata } = req.body;
+            const { content, mood, intensity, anonymous, imageUrl, originalPostId, mediaMetadata, suggestedMood } = req.body;
             const userId = req.user?.uid;
 
             if (!userId) return res.status(401).json({ message: 'Unauthorized' });
@@ -17,6 +17,7 @@ export class PostController {
                 mood: mood || 'happy',
                 intensity: intensity !== undefined ? intensity : 1,
                 anonymous: anonymous || false,
+                suggestedMood: suggestedMood || null,
             };
 
             if (imageUrl) postData.imageUrl = imageUrl;

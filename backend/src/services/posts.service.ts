@@ -15,6 +15,18 @@ export class PostService {
         };
 
         await postRef.set(newPost);
+
+        // Feedback Loop: Log corrections to improve sentiment model
+        if (postData.suggestedMood && postData.mood && postData.suggestedMood !== postData.mood) {
+            await db.collection('sentiment_feedback').add({
+                text: postData.content,
+                label: postData.mood, // The correct label provided by the user
+                originalSuggestion: postData.suggestedMood,
+                userId: postData.userId,
+                createdAt: admin.firestore.FieldValue.serverTimestamp(),
+            });
+        }
+
         return {
             id: postRef.id,
             ...newPost,

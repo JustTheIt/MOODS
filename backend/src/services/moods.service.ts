@@ -11,6 +11,18 @@ export class MoodService {
             createdAt: admin.firestore.FieldValue.serverTimestamp(),
         };
         await moodRef.set(log);
+
+        // Feedback Loop: Log corrections to improve sentiment model
+        if (moodData.suggestedMood && moodData.mood && moodData.suggestedMood !== moodData.mood) {
+            await db.collection('sentiment_feedback').add({
+                text: moodData.text,
+                label: moodData.mood, // The correct label provided by the user
+                originalSuggestion: moodData.suggestedMood,
+                userId,
+                createdAt: admin.firestore.FieldValue.serverTimestamp(),
+            });
+        }
+
         return { id: moodRef.id, ...log, timestamp: now };
     }
 

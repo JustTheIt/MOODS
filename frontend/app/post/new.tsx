@@ -39,6 +39,7 @@ export default function NewPostScreen() {
     const [media, setMedia] = useState<{ uri: string, type: 'image' | 'video' } | null>(null);
     const [loading, setLoading] = useState(false);
     const [analyzing, setAnalyzing] = useState(false);
+    const [suggestedMood, setSuggestedMood] = useState<MoodType | null>(null);
 
     useEffect(() => {
         const timer = setTimeout(async () => {
@@ -46,7 +47,8 @@ export default function NewPostScreen() {
                 setAnalyzing(true);
                 const mood = await analyzeMood(content);
                 if (mood) {
-                    setSelectedMood(mood);
+                    setSelectedMood(mood as MoodType);
+                    setSuggestedMood(mood as MoodType);
                     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
                 }
                 setAnalyzing(false);
@@ -89,6 +91,7 @@ export default function NewPostScreen() {
                     content: content,
                     mood: selectedMood,
                     intensity: intensity,
+                    suggestedMood: suggestedMood,
                     anonymous: user.isAnonymous ?? false,
                 }, media || undefined);
 

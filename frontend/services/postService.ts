@@ -63,7 +63,7 @@ const mapApiPostToPost = (data: any): Post => {
     };
 };
 
-export const createPost = async (postData: { userId: string, content: string, mood: MoodType, intensity: number, anonymous: boolean, originalPostId?: string }, media?: { uri: string, type: 'image' | 'video' }) => {
+export const createPost = async (postData: { userId: string, content: string, mood: MoodType, intensity: number, anonymous: boolean, suggestedMood?: MoodType | null, originalPostId?: string }, media?: { uri: string, type: 'image' | 'video' }) => {
     try {
         let imageUrl = null;
         let mediaMetadata = null;
