@@ -8,7 +8,7 @@ frontend/.expo/
 frontend/dist/
 frontend/build/
 frontend/.dist/
-# frontend/.env*
+frontend/.env*
 frontend/expo-env.d.ts
 frontend/npm-debug.log*
 frontend/yarn-debug.log*
@@ -17,9 +17,9 @@ frontend/yarn-error.log*
 # Backend
 backend/node_modules/
 backend/dist/
-# backend/.env*
+backend/.env*
 backend/npm-debug.log*
 
 # Misc
-# .env
-# .env.local
+.env
+.env.local
